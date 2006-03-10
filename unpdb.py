@@ -24,6 +24,7 @@ def main():
 	for i in range(num_rec):
 		f.seek(toc[i] + 4)
 		blksize = struct.unpack('>I', f.read(4))[0]
+		fo.write( f.read(blksize) )
 	
 	f.close()
 	if fo is not sys.stdout: fo.close()
