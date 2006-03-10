@@ -12,7 +12,7 @@ def main():
 		
 	fn = sys.argv[1]
 	f = file(fn, 'rb')
-	fo = file(sys.argv[2], 'wb')
+	fo = sys.argv[2] == '-' and sys.stdout or file(sys.argv[2], 'wb')
 	f.seek(76)
 	
 	num_rec = struct.unpack('>H', f.read(2))[0]
@@ -30,7 +30,7 @@ def main():
 		fo.write( f.read(blksize) )		
 	
 	f.close()
-	fo.close()
+	if fo is not sys.stdout: fo.close()
 	
 	
 if __name__ == '__main__': main()
