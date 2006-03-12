@@ -23,25 +23,27 @@
 #define DUP_IN 10
 #define DUP_OUT 11
 
+#define LLEN 6
+
 static struct termios term_state;
-static char* syms = "abcdefghigklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXWZ'$|><&*/_!";
+static const char* const syms = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXWZ'$|><&*\\/ !.,{}[];:()#@";
 
 char* get_sel(int num, int pos) {
 	static const char *esc_l = "\033[0;37;40m";
 	static const char *esc_sl = "\033[0;30;47m";
 	static const char *esc_r = "\033[0;0;0m";
-	static char ret[50];
-	char l, m, r;
+	/*static char *ret[strlen(esc_l)*2 + strlen(esc_sl) + strlen(esc_r) + LLEN + 2];*/
+	static char ret[10 * 2 + 10 + 8 + LLEN + 2];
+	char sm[LLEN + 1], tmp;
 	int sl = strlen(syms);
-	l = syms[num * 3 % sl];
-	m = syms[(num * 3 % sl) + 1];
-	r = syms[(num * 3 % sl) + 2];
-	if(pos == 0)
-		sprintf(ret, "%s%c%s%c%c%s",esc_sl,l ,esc_l ,m, r,esc_r);
-	else if (pos == 1)
-		sprintf(ret, "%s%c%s%c%s%c%s",esc_l, l , esc_sl,m , esc_l, r, esc_r);
-	else if (pos == 2)
-		sprintf(ret, "%s%c%c%s%c%s",esc_l ,l ,m, esc_sl,r , esc_r);
+	int i;
+	sm[LLEN] = 0;
+	for(i = 0; i < LLEN; i++)
+		sm[i] = syms[num * LLEN % sl + i];
+
+	tmp = sm[pos];
+	sm[pos] = 0;
+	sprintf(ret, "%s|%s%s%c%s%s%s",esc_l, sm , esc_sl, tmp, esc_l, &sm[pos + 1], esc_r);
 	return ret;
 }
 
@@ -74,35 +76,35 @@ void drop(int line, int pos) {
 }
 
 void clean_drop(int line, int pos) {
-	write(DUP_OUT, "\b\b\b", 3);
+	char buff[LLEN];
+	int i;
+	for(i = 0; i <= LLEN; i++)
+		buff[i] = '\b';
+	write(DUP_OUT, buff, LLEN + 1);
 	drop(line, pos);
 }
 
 void clean_show(char c) {
-	static char ln[4] = "\b\b\b ";
-	ln[3] = c;
-	write(DUP_OUT, ln, 4);
+	char buff[LLEN + 2];
+	int i;
+	for(i = 0; i <= LLEN;i++)
+		buff[i] = '\b';
+	buff[LLEN + 1] = c;
+	write(DUP_OUT, buff, LLEN + 2);
 }
 
 int execute(char* cmd) {
-	restore_term();
-	int fds[2];
 	int c_s;
-	pipe(fds);
-	pid_t c_pid = fork();
+	pid_t c_pid;
+	restore_term();
+	c_pid = fork();
 	if(0 == c_pid) {
-		close(fds[1]);
-		dup2(fds[0], 0);
-		execl(getenv("SHELL"), "sh", 0);
+		execl(getenv("SHELL"), "sh", "-c", cmd , 0);
+		exit(0);
 	}
-	close(fds[0]);
-	write(fds[1], cmd, strlen(cmd));
-	close(fds[1]);
 	wait(&c_s);
 
-	dup2(DUP_IN, 0);
 	set_term();
-	close(0);
 	return OK;
 }
 
@@ -110,9 +112,7 @@ int main_loop() {
 	char dest[CMD_SIZE];
 	char btn;
 	unsigned int cmd_pos = 0;
-	int line, pos;
-	line = 0;
-	pos = 0;
+	int line=0, pos=0;
 	int table_l = strlen(syms);
 	int last_enter = 0;
 
@@ -121,22 +121,22 @@ int main_loop() {
 		read(DUP_IN, &btn, 1);
 		switch(btn) {
 			case LEFT:
-				pos = (pos > 0) ? (pos - 1) : 2;
+				pos = (pos > 0) ? (pos - 1) : (LLEN - 1);
 				last_enter = 0;
 				clean_drop(line, pos);
 				break;
 			case RIGHT:
-				pos = (pos + 1) % 3;
+				pos = (pos + 1) % LLEN;
 				last_enter = 0;
 				clean_drop(line, pos);
 				break;
 			case UP:
-				line = (line > 0) ? (line - 1) : (table_l / 3);
+				line = (line > 0) ? (line - 1) : (table_l / LLEN - 1);
 				last_enter = 0;
 				clean_drop(line, pos);
 				break;
 			case DOWN:
-				line = (line + 1) % (table_l / 3);
+				line = (line + 1) % (table_l / LLEN);
 				last_enter = 0;
 				clean_drop(line, pos);
 				break;
@@ -155,12 +155,13 @@ int main_loop() {
 								dest[i] = ' ';
 						execute(dest);
 					}
+					last_enter = 0;
 					cmd_pos = 0;
 					drop(line, pos);
 				} else {
 					last_enter = 1;
-					clean_show(syms[line * 3 + pos]);
-					dest[cmd_pos++] = syms[line * 3 + pos];
+					clean_show(syms[line * LLEN + pos]);
+					dest[cmd_pos++] = syms[line * LLEN + pos];
 					dest[cmd_pos] = 0;
 					drop(line, pos);
 				}
@@ -183,7 +184,6 @@ int main(int argc, char** args) {
 		return ERROR;
 	}
 	dup2(0, DUP_IN);
-	close(0);
 	dup2(1, DUP_OUT);
 	return main_loop();
 }
