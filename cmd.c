@@ -18,6 +18,7 @@
 #define RIGHT 67
 #define LEFT 68
 #define ENTER 10
+#define BACKSPACE 'f'
 #define EXIT ("ex")
 
 #define DUP_IN 10
@@ -26,7 +27,7 @@
 #define LLEN 6
 
 static struct termios term_state;
-static const char* const syms = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXWZ'$|><&*\\/ !.,{}[];:()#@";
+static const char* const syms = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXWZ'$|><&*\\/ !.,{}[];:()#@+-?\"_";
 
 char* get_sel(int num, int pos) {
 	static const char *esc_l = "\033[0;37;40m";
@@ -115,6 +116,7 @@ int main_loop() {
 	int line=0, pos=0;
 	int table_l = strlen(syms);
 	int last_enter = 0;
+	int i;
 
 	drop(line, pos);
 	do{
@@ -166,6 +168,16 @@ int main_loop() {
 					drop(line, pos);
 				}
 				break;
+			case BACKSPACE:
+				if(cmd_pos > 0) {
+					write(DUP_OUT, "\r", 1);
+					for(i=0; i<cmd_pos + LLEN + 2; i++)
+						write(DUP_OUT, " ", 1);
+					write(DUP_OUT, "\r", 1);
+					dest[--cmd_pos] = 0;
+					write(DUP_OUT, dest, cmd_pos);
+					drop(line, pos);
+				}
 			default:
 				{}
 		}
