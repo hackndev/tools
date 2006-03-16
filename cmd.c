@@ -152,9 +152,15 @@ int main_loop() {
 						dest[ cmd_pos++ ] = '\n';
 						dest[cmd_pos]=0;
 						write(DUP_OUT, "\n", 1);
+#if 0
+
+// WTF? There actually IS space character. It comes earlier that _
+// There are problems with it when typing something like 'modprobe pxa27x_udc' :)))
+// -- slapin
 						for(i = 0; dest[i] != 0; i++)
 							if(dest[i]=='_')
 								dest[i] = ' ';
+#endif
 						execute(dest);
 					}
 					last_enter = 0;
