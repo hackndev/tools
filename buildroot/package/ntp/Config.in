@@ -1,0 +1,8 @@
+config BR2_PACKAGE_NTP
+	bool "ntp"
+	default n
+	help
+	  Network Time Protocol suite/programs.
+	  Provides things like ntpd, ntpdate, ntpq, etc...
+
+	  http://www.ntp.org/

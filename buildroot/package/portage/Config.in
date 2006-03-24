@@ -1,0 +1,8 @@
+config BR2_PACKAGE_PORTAGE
+	bool "portage"
+	default n
+	select BR2_PACKAGE_PYTHON
+	help
+	  Portage, the Gentoo package management tool.
+
+	  http://www.gentoo.org/

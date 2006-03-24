@@ -1,0 +1,49 @@
+#!/bin/sh
+set x
+
+PATH="/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
+export PATH
+
+mount -o remount,rw /
+mount -t proc proc /proc
+mount -a
+cd /
+tar zcvf /tmp/modules.tgz /lib/modules
+mount -t tmpfs tmpfs /lib/modules
+tar zxf /tmp/modules.tgz
+
+depmod -a
+echo "Gpioed"
+modprobe gpioed
+
+# /bin/hostname -F /etc/hostname
+# /sbin/ifconfig lo 127.0.0.1 up
+# /sbin/route add -net 127.0.0.0 netmask 255.0.0.0 lo
+
+
+# Start all init scripts in /etc/init.d
+# executing them in numerical order.
+#
+echo "Starting scripts"
+
+for i in /etc/init.d/S??* ;do
+
+     # Ignore dangling symlinks (if any).
+     [ ! -f "$i" ] && continue
+
+     case "$i" in
+	*.sh)
+	    # Source shell script for speed.
+	    (
+		trap - INT QUIT TSTP
+		set start
+		. $i
+	    )
+	    ;;
+	*)
+	    # No sh extension, so fork subprocess.
+	    $i start
+	    ;;
+    esac
+done
+

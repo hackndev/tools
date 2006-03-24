@@ -1,0 +1,134 @@
+diff -urN ../valgrind-2.4.0/coregrind/vg_syscalls.c valgrind-2.4.0/coregrind/vg_syscalls.c
+--- ../valgrind-2.4.0/coregrind/vg_syscalls.c	2005-03-23 03:22:03.000000000 -0700
++++ valgrind-2.4.0/coregrind/vg_syscalls.c	2005-07-22 03:42:01.000000000 -0600
+@@ -3266,15 +3266,34 @@
+       SYS_PRE_MEM_WRITE( "ioctl(RTC_IRQP_READ)", arg3, sizeof(unsigned long));
+       break;
+ 
++   case VKI_BLKRRPART:
++   case VKI_BLKFLSBUF:
++      break;
+    case VKI_BLKGETSIZE:
+       SYS_PRE_MEM_WRITE( "ioctl(BLKGETSIZE)", arg3, sizeof(unsigned long));
+       break;
++   case VKI_BLKGETSIZE64:
++      SYS_PRE_MEM_WRITE( "ioctl(BLKGETSIZE64)", arg3, sizeof(__vki_u64));
++      break;
++   case VKI_BLKSSZGET:
++      SYS_PRE_MEM_WRITE( "ioctl(BLKSSZGET)", arg3, sizeof(unsigned long));
++      break;
++   case VKI_BLKBSZGET:
++      SYS_PRE_MEM_WRITE( "ioctl(BLKBSZGET)", arg3, sizeof(unsigned long));
++      break;
++   case VKI_BLKBSZSET:
++      SYS_PRE_MEM_READ( "ioctl(BLKBSZSET)", arg3, sizeof(unsigned long) );
++      break;
+ 
+       /* Hard disks */
+    case VKI_HDIO_GET_IDENTITY: /* 0x030d */
+       SYS_PRE_MEM_WRITE( "ioctl(HDIO_GET_IDENTITY)", arg3,
+                      VKI_SIZEOF_STRUCT_HD_DRIVEID );
+       break;
++   case VKI_HDIO_GETGEO: /* 0x0301 */
++      SYS_PRE_MEM_WRITE( "ioctl(HDIO_GETGEO)", arg3,
++                     sizeof(struct vki_hd_geometry) );
++      break;
+ 
+       /* CD ROM stuff (??)  */
+    case VKI_CDROM_GET_MCN:
+@@ -3332,6 +3351,7 @@
+       break;
+       /* The following two are probably bogus (should check args
+ 	 for readability).  JRS 20021117 */
++   case VKI_CDROMEJECT:
+    case VKI_CDROM_DRIVE_STATUS: /* 0x5326 */
+    case VKI_CDROM_CLEAR_OPTIONS: /* 0x5321 */
+       break;
+@@ -3931,14 +3951,31 @@
+       VG_TRACK( post_mem_write,arg3, sizeof(unsigned long));
+       break;
+ 
++   case VKI_BLKRRPART:
++   case VKI_BLKFLSBUF:
++      break;
+    case VKI_BLKGETSIZE:
+       VG_TRACK( post_mem_write,arg3, sizeof(unsigned long));
+       break;
++   case VKI_BLKGETSIZE64:
++      VG_TRACK( post_mem_write,arg3, sizeof(__vki_u64));
++      break;
++   case VKI_BLKSSZGET:
++      VG_TRACK( post_mem_write,arg3, sizeof(unsigned long));
++      break;
++   case VKI_BLKBSZGET:
++      VG_TRACK( post_mem_write,arg3, sizeof(unsigned long));
++      break;
++   case VKI_BLKBSZSET:
++      break;
+ 
+       /* Hard disks */
+    case VKI_HDIO_GET_IDENTITY: /* 0x030d */
+       VG_TRACK( post_mem_write,arg3, VKI_SIZEOF_STRUCT_HD_DRIVEID );
+       break;
++   case VKI_HDIO_GETGEO: /* 0x0301 */
++      VG_TRACK( post_mem_write,arg3, sizeof(struct vki_hd_geometry) );
++      break;
+ 
+       /* CD ROM stuff (??)  */
+    case VKI_CDROMSUBCHNL:
+@@ -3967,6 +4004,7 @@
+       break;
+       /* The following two are probably bogus (should check args
+ 	 for readability).  JRS 20021117 */
++   case VKI_CDROMEJECT:
+    case VKI_CDROM_DRIVE_STATUS: /* 0x5326 */
+    case VKI_CDROM_CLEAR_OPTIONS: /* 0x5321 */
+       break;
+diff -urN ../valgrind-2.4.0/include/linux/vki.h valgrind-2.4.0/include/linux/vki.h
+--- ../valgrind-2.4.0/include/linux/vki.h	2005-03-10 23:28:14.000000000 -0700
++++ valgrind-2.4.0/include/linux/vki.h	2005-07-22 03:42:01.000000000 -0600
+@@ -1389,7 +1389,14 @@
+ // From linux-2.6.8.1/include/linux/fs.h
+ //----------------------------------------------------------------------
+ 
+-#define VKI_BLKGETSIZE _VKI_IO(0x12,96) /* return device size /512 (long *arg) */
++#define VKI_BLKGETSIZE	_VKI_IO(0x12,   96) /* return device size /512 (long *arg) */
++#define VKI_BLKGETSIZE64 _VKI_IOR(0x12, 114, __vki_u64)	/* return device size in bytes (u64 *arg) */
++#define VKI_BLKRRPART	_VKI_IO(0x12,	95)	/* re-read partition table */
++#define VKI_BLKFLSBUF	_VKI_IO(0x12,	97)	/* flush buffer cache */
++#define VKI_BLKSSZGET	_VKI_IO(0x12,	104)/* get block device sector size */
++#define VKI_BLKBSZGET	_VKI_IOR(0x12,	112, unsigned long)
++#define VKI_BLKBSZSET	_VKI_IOW(0x12,	113, unsigned long)
++
+ 
+ #define VKI_FIBMAP	_VKI_IO(0x00,1)	/* bmap access */
+ #define VKI_FIGETBSZ    _VKI_IO(0x00,2)	/* get the block size used for bmap */
+@@ -1464,6 +1471,7 @@
+                                            (struct cdrom_tochdr) */
+ #define VKI_CDROMREADTOCENTRY	0x5306 /* Read TOC entry 
+                                            (struct cdrom_tocentry) */
++#define VKI_CDROMEJECT		0x5309 /* Ejects the cdrom media */
+ #define VKI_CDROMSUBCHNL	0x530b /* Read subchannel data 
+                                            (struct cdrom_subchnl) */
+ #define VKI_CDROMREADMODE2	0x530c /* Read CDROM mode 2 data (2336 Bytes) 
+@@ -1674,12 +1682,20 @@
+ // From linux-2.6.8.1/include/linux/hdreg.h
+ //----------------------------------------------------------------------
+ 
++#define VKI_HDIO_GETGEO		0x0301	/* get device geometry */
+ #define VKI_HDIO_GET_IDENTITY	0x030d	/* get IDE identification info */
+ 
+ // [[Nb: done like this because the original type is a huge struct that will
+ //   always be the same size.]]
+ #define VKI_SIZEOF_STRUCT_HD_DRIVEID   512
+ 
++struct vki_hd_geometry {
++      unsigned char heads;
++      unsigned char sectors;
++      unsigned short cylinders;
++      unsigned long start;
++};
++
+ //----------------------------------------------------------------------
+ // From linux-2.6.8.1/include/linux/fb.h
+ //----------------------------------------------------------------------

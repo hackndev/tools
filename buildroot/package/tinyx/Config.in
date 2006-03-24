@@ -1,0 +1,5 @@
+config BR2_PACKAGE_TINYX
+	bool "tinyx"
+	default n
+	help
+	  A tiny X server.  Also known as 'Xfbdev' and 'kdrive'.

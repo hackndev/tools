@@ -1,0 +1,18 @@
+config BR2_PACKAGE_GETTEXT
+	bool "gettext"
+	default n
+	help
+	  The GNU `gettext' utilities are a set of tools that provide a 
+	  framework to help other GNU packages produce multi-lingual 
+	  messages.
+
+	  http://www.gnu.org/software/gettext/
+
+config BR2_PACKAGE_LIBINTL
+	bool "libintl"
+	default n
+	help
+	  Selecting this package installs all of gettext in the staging
+	  directory and the shared library for it's use in the target.
+
+	  http://www.gnu.org/software/gettext/

@@ -1,0 +1,5 @@
+config BR2_PACKAGE_OPENOBEX
+	bool "openobex"
+	default n
+	help
+	  OpenOBEX protocol

@@ -1,0 +1,12 @@
+#!/bin/sh
+echo
+echo
+echo
+echo "linuxrc"
+echo
+echo
+echo
+/etc/init.d/rcS
+/bin/dmesg | more
+/bin/cmd
+

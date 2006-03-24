@@ -1,0 +1,5 @@
+config BR2_PACKAGE_IRDA_UTILS
+	bool "irda-utils"
+	default n
+	help
+	  IrDA-utils

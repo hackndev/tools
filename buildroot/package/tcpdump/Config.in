@@ -1,0 +1,14 @@
+config BR2_PACKAGE_TCPDUMP
+	bool "tcpdump"
+	default n
+	help
+	  A tool for network monitoring and data acquisition.
+
+	  http://www.tcpdump.org/
+
+config BR2_PACKAGE_DHCPDUMP
+	bool "dhcpdump"
+	default n
+	depends BR2_PACKAGE_TCPDUMP
+	help
+	  A tool for monitoring dhcp requests using tcpdump.

@@ -1,0 +1,7 @@
+config BR2_PACKAGE_CUSTOMIZE
+	bool "customize"
+	default n
+	help
+	  Add custom stuff to your buildroot.
+
+	  (edit package/customize/customize.mk)

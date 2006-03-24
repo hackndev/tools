@@ -1,0 +1,7 @@
+config BR2_PACKAGE_FAKEROOT
+	bool "fakeroot"
+	default n
+	help
+	  Run commands in an environment faking root privileges.
+
+	  http://joostje.op.het.net/fakeroot/

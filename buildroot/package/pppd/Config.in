@@ -1,0 +1,7 @@
+config BR2_PACKAGE_PPPD
+	bool "pppd"
+	default n
+	help
+	  An implementation of the Point-to-point protocol.
+
+	  http://www.samba.org/ppp/

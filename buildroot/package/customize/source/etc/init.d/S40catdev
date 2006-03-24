@@ -1,0 +1,12 @@
+#!/bin/sh
+ exit 0
+ find /dev/input -ls|more
+ for f in input0 input1
+ do
+  for g in phys name
+  do
+   echo /sys/class/input/$f
+   cat /sys/class/input/$f/phys
+   cat /sys/class/input/$f/name
+  done
+ done

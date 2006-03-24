@@ -1,0 +1,3 @@
+#!/bin/sh
+(find /sys|grep back;find /sys|grep bl)|/bin/more
+

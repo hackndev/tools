@@ -1,0 +1,43 @@
+# gcc has a bunch of options that need to be shared with
+# both gcc-uclibc-2.95.mk and gcc-uclibc-3.x.mk, and are
+# use by other packages...  So include them in this file
+# and arrange to include it soon after invoking make from
+# the top level.
+
+GCC_VERSION:=$(strip $(subst ",, $(BR2_GCC_VERSION)))
+#"
+TARGET_OPTIMIZATION:=$(strip $(subst ",, $(BR2_TARGET_OPTIMIZATION)))
+#"
+EXTRA_GCC_CONFIG_OPTIONS:=$(strip $(subst ",, $(BR2_EXTRA_GCC_CONFIG_OPTIONS)))
+#"
+
+
+ifeq ($(strip $(BR2_GCC_USE_SJLJ_EXCEPTIONS)),y)
+GCC_USE_SJLJ_EXCEPTIONS:=--enable-sjlj-exceptions
+endif
+ifeq ($(BR2_SOFT_FLOAT),y)
+# gcc 3.4.x soft float configuration is different than previous versions.
+ifeq ($(findstring 3.4.,$(GCC_VERSION)),3.4.)
+SOFT_FLOAT_CONFIG_OPTION:=--with-float=soft
+else
+SOFT_FLOAT_CONFIG_OPTION:=--without-float
+endif
+# again... there must be a better way
+ifeq ($(findstring 4.0.,$(GCC_VERSION)),4.0.)
+SOFT_FLOAT_CONFIG_OPTION:=--with-float=soft
+endif
+ifeq ($(findstring 4.1.,$(GCC_VERSION)),4.1.)
+SOFT_FLOAT_CONFIG_OPTION:=--with-float=soft
+endif
+TARGET_SOFT_FLOAT:=-msoft-float
+ARCH_FPU_SUFFIX:=_nofpu
+else
+SOFT_FLOAT_CONFIG_OPTION:=
+TARGET_SOFT_FLOAT:=
+ARCH_FPU_SUFFIX:=
+endif
+
+ifeq ($(strip $(BR2_PACKAGE_GCC_TARGET)),y)
+TARGETS+=gcc_target
+endif
+

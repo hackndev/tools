@@ -1,0 +1,11 @@
+#!/bin/sh
+echo "===================="
+echo INIT
+echo
+
+/etc/init.d/rcS
+PATH="/bin:/sbin:/usr/bin:/usr/sbin"
+SHELL="/bin/sh"
+export PATH SHELL
+
+/bin/cmd

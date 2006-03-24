@@ -1,0 +1,18 @@
+ifeq ($(BR2_PTHREADS),y)
+THREADS:=--enable-threads
+else
+THREADS:=--disable-threads
+endif
+
+ifeq ($(BR2_ENABLE_MULTILIB),y)
+MULTILIB:=--enable-multilib
+else
+MULTILIB:=--disable-multilib
+endif
+
+
+# FIXME -- this is temporary
+OPTIMIZE_FOR_CPU=$(ARCH)
+
+# gcc has a bunch of needed stuff....
+include toolchain/gcc/Makefile.in

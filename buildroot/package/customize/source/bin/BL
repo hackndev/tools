@@ -1,0 +1,10 @@
+#!/bin/sh
+cat /sys/class/backlight/palmz72-bl/max_brightness
+echo
+cat /sys/class/backlight/palmz72-bl/brightness
+echo
+if [ "$1" = "" ]
+then exit
+else echo $1 >/sys/class/backlight/palmz72-bl/brightness
+fi
+

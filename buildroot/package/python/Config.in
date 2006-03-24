@@ -1,0 +1,7 @@
+config BR2_PACKAGE_PYTHON
+	bool "python"
+	default n
+	help
+	  The python language interpreter.
+
+	  http://www.python.org/
