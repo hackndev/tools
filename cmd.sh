@@ -15,7 +15,8 @@ table_l=${#syms[@]}
 last_enter=0
 LLEN=6
 dest=""
-ENTER='h'
+ENTER='
+'
 BACKSPACE='f'
 
 get_sel(){
