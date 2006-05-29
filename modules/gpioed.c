@@ -141,7 +141,12 @@ static int gpio_watch(int x)
 void handle_request()
 {
 	char *p = NULL;
-	unsigned long id = simple_strtoul(procfs_buffer+2, &p, 10);
+	unsigned long base = 10;
+	unsigned long id;
+	
+	if((procfs_buffer[0] == 'P') || (procfs_buffer[0] == 'V'))
+		base = 16;
+	id = simple_strtoul(procfs_buffer+2, &p, base);
 	switch(procfs_buffer[0]) {
 		case 'r':
 			printk(KERN_ERR "GPIOed: GPIO %lu is %s\n", id, gpio_get(id)?"high":"low ");
@@ -159,6 +164,13 @@ void handle_request()
 			break;
 		case 'd':
 			printk(KERN_ERR "GPIOed: GPIO %lu is %s\n", id, GET_GPIO_REG(DR,id)?"output":"input");
+			break;
+
+		case 'P':
+			printk(KERN_ERR "GPIOed: P-V for\n0x%x is\n0x%x\n", id, (unsigned int)phys_to_virt(id));
+			break;
+		case 'V':
+			printk(KERN_ERR "GPIOed: V-P for\n0x%x is\n0x%x\n", id, (unsigned int)virt_to_phys(id));
 			break;
 		default:
 			printk(KERN_ERR "GPIOed: Unknown request\n");
