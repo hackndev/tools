@@ -167,10 +167,10 @@ void handle_request()
 			break;
 
 		case 'P':
-			printk(KERN_ERR "GPIOed: P-V for\n0x%x is\n0x%x\n", id, (unsigned int)phys_to_virt(id));
+			printk(KERN_ERR "GPIOed: P-V for 0x%x is 0x%x\n", id, (unsigned int)phys_to_virt(id));
 			break;
 		case 'V':
-			printk(KERN_ERR "GPIOed: V-P for\n0x%x is\n0x%x\n", id, (unsigned int)virt_to_phys(id));
+			printk(KERN_ERR "GPIOed: V-P for 0x%x is 0x%x\n", id, (unsigned int)virt_to_phys(id));
 			break;
 		default:
 			printk(KERN_ERR "GPIOed: Unknown request\n");
