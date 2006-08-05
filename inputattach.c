@@ -286,7 +286,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	devt = SERIO_RS232 | input_types[type].type | (input_types[type].extra << 16);
+//	devt = SERIO_RS232 | input_types[type].type | (input_types[type].extra << 16);
+	devt = input_types[type].type | (input_types[type].extra << 16);
 
 	if(ioctl(fd, SPIOCSTYPE, &devt)) {
 		fprintf(stderr, "inputattach: can't set device type\n");
