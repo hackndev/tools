@@ -1,0 +1,106 @@
+BCM2035-tool
+************
+
+	This package contains a small utility to initialize and to update
+the firmware of the bcm2035 bluetooth chip on the Motorola EZX Platform and
+Palm devices with this chip.
+
+	This chip has some custom HCI commands, to change the BDADDR and to
+patch the original firmware. This tool can make use of both.
+
+Instructions:
+-------------
+
+
+    You can use the motorola firmware by #defining PATCH_FIRMWARE, and the
+Broadcom original firmware by leaving it commented. The chip works fine with
+both firmwares, and i havent found yet what difference the motorola version 
+does.
+	Turn on the chip by sending "AT+EBTP=1\r" to BP, and run the tool.
+
+
+Regards,
+
+Daniel Ribeiro
+
+--------
+
+Extension by 72ka - Jan Herman <2hp@seznam.cz>:
+
+usage: bcm2035-tool <dev> <bdaddr>
+
+MAC address is as command. Remember original MAC addres from PalmOS and use in argument <bdaddr>
+
+e.g.
+
+bcm2035-tool /dev/ttyS1 00:07:8a:78:e3:23
+
+-------
+
+wyrm@vault:~/bcm2035-tool$ make upload
+/ezx/cross/bin/arm-angstrom-linux-gnueabi-gcc bcm2035-tool.c -o bcm2035-tool
+scp bcm2035-tool root@a780:
+root@a780's password:
+bcm2035-tool                                    100%   15KB  15.3KB/s   00:00
+wyrm@vault:~/bcm2035-tool$ a780
+root@a780's password:
+root@a780:~$ echo -e "AT+EBTP=1\r" | nc localhost 7104
+
+OK
+
+root@a780:~$ ./bcm2035-tool /dev/ttyS1
+Set baud: 921600
+Patching Firmware...
+:0: Wrote 17 bytes
+:1: Wrote 33 bytes
+:2: Wrote 78 bytes
+:3: Wrote 15 bytes
+:4: Wrote 76 bytes
+:5: Wrote 25 bytes
+:6: Wrote 127 bytes
+:7: Wrote 13 bytes
+:8: Wrote 185 bytes
+:9: Wrote 572 bytes
+:10: Wrote 31 bytes
+:11: Wrote 76 bytes
+:12: Wrote 41 bytes
+:13: Wrote 113 bytes
+:14: Wrote 56 bytes
+:15: Wrote 39 bytes
+:16: Wrote 29 bytes
+:17: Wrote 56 bytes
+:18: Wrote 39 bytes
+:19: Wrote 82 bytes
+:20: Wrote 33 bytes
+:21: Wrote 29 bytes
+:22: Wrote 43 bytes
+:23: Wrote 86 bytes
+:24: Wrote 146 bytes
+:25: Wrote 11 bytes
+@0: Wrote 82 bytes
+@1: Wrote 6170 bytes
+Set baud: 460800
+root@a780:~$ hciconfig hci0 up
+root@a780:~$ hciconfig hci0
+hci0:   Type: UART
+        BD Address: 01:23:45:67:89:AB ACL MTU: 377:10 SCO MTU: 64:0
+        UP RUNNING PSCAN ISCAN
+        RX bytes:79 acl:0 sco:0 events:8 errors:0
+        TX bytes:39 acl:0 sco:0 commands:8 errors:0
+
+root@a780:~$ hciconfig hci0 version
+hci0:   Type: UART
+        BD Address: 01:23:45:67:89:AB ACL MTU: 377:10 SCO MTU: 64:0
+        HCI Ver: 1.1 (0x1) HCI Rev: 0x3 LMP Ver: 1.1 (0x1) LMP Subver: 0x700
+        Manufacturer: Broadcom Corporation (15)
+root@a780:~$ hciconfig hci0 revision
+	hci0:   Type: UART
+        BD Address: 01:23:45:67:89:AB ACL MTU: 377:10 SCO MTU: 64:0
+        Firmware 3.7 / 0
+root@a780:~$ hcitool dev
+Devices:
+        hci0    01:23:45:67:89:AB
+root@a780:~$ hcitool scan
+Scanning ...
+        00:07:A4:58:05:B0       Motorola HS810
+
