@@ -36,6 +36,34 @@ if len(sys.argv) > 1:
 if len(sys.argv) > 2:
 	outf = file(sys.argv[2], 'wb')
 
+def put(s):
+	for c in s:
+		outf.write(c)
+		outf.flush()
+		time.sleep(0.001)
+
+# setup gpios
+put('w 0x40e0000c=0xc3ef001c\r\n') # GPDR0
+put('w 0x40e00010=0xff22ab93\r\n') # GPDR1
+put('w 0x40e00014=0x9b1cffff\r\n') # GPDR2
+put('w 0x40e0010c=0x01f7e785\r\n') # GPDR3
+
+put('w 0x40e00054=0x08000000\r\n') # GAFR0_L
+put('w 0x40e00058=0xa51a8002\r\n') # GAFR0_U
+#put('w 0x40e0005c=0x69989940\r\n') # GAFR1_L
+#put('w 0x40e00060=0x69989940\r\n') # GAFR1_U
+put('w 0x40e00064=0x0aaaaaaa\r\n') # GAFR2_L
+put('w 0x40e00068=0x08040c08\r\n') # GAFR2_U
+put('w 0x40e0006c=0x010a950c\r\n') # GAFR3_L
+put('w 0x40e00070=0x00001400\r\n') # GAFR3_U
+
+put('w 0x40e00018=0x051ba5ff\r\n') # GPSR0
+put('w 0x40e0001c=0x65fd5fbc\r\n') # GPSR1
+put('w 0x40e00020=0x42fb2d93\r\n') # GPSR2
+put('w 0x40e00118=0x0066138d\r\n') # GPSR3
+
+put('\r\n')
+
 address = LOAD_ADDR
 
 while 1:
@@ -46,7 +74,7 @@ while 1:
 
 	value, = struct.unpack('<I', data)
 
-	outf.write('w 0x%x=0x%x\r\n' % (address, value))
+	put('w 0x%x=0x%x\r\n' % (address, value))
 
 	address += 4
 
@@ -54,4 +82,4 @@ while 1:
 		outf.flush()
 		time.sleep(0.02)
 
-outf.write('x 0x%x\r\n' % LOAD_ADDR)
+put('x 0x%x\r\n' % LOAD_ADDR)
