@@ -1,0 +1,55 @@
+--------------------
+Serial Loading Tools
+--------------------
+
+This collection of tools enables you to boot Linux on a palmld PDA via the
+'Sandal' recovery console on the serial port.  They may also be useful for other
+devices.
+
+Usage
+-----
+
+Connect PDA to PC's serial port.  You'll need to convert between the PDA's TTL
+level serial port and your PCs RS232.  Alternatively you can get a something
+like a Nokia DKU-5 data cable which does TTL serial -> USB conversion.
+
+Open the serial port using something like minicom at a baud rate of 115200 with
+both software and hardware flow control disabled.
+
+Reset the PDA while holding down the hotsync button.  The LCD should remain off
+indicating the recovery console has been entered.  On the PC you should see the
+Sandal prompt.  Check to make sure the link is working by typing a command such
+as "w 0".
+
+Compile the 'quickload' bootloader by typing 'make'.  Upload the bootloader to
+the PDA using a command like:
+
+    ./bin2sandal.py -d quickload.bin > /dev/ttyUSB0
+
+In minicom you should see a bunch memory write commands hopefully ending in
+quickload's prompt "Q?" .
+
+Upload your kernel image using ql.py:
+
+    ./ql.py < zImage > /dev/ttyUSB0
+
+This may take a while, ql.py will print the progress percentage and you should
+see the bootloader replying with lots of dots in minicom.  When the upload is
+complete ql.py will exit and the bootloader will print 'G' and then attempt to
+jump to the image.
+
+
+Kernel Note
+-----------
+
+Quickload doesn't support passing a kernel command line at the moment so you'll
+want to compile one into kernel itself.  Normally you'll want to at least 
+specify the RAM size of the device and put the console on the serial port like
+this:
+
+    mem=32M console=ttyS0,115200
+
+
+----
+Alex Osborne 
+<alex at-sign hackndev dot com>
