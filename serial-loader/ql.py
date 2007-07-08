@@ -23,6 +23,9 @@ sys.stdout.write('G')
 # output the size of the image
 sys.stdout.write(struct.pack('<I', len(image)))
 
+start = time.time()
+
+imgsize = len(image)
 # write out image
 i = 0
 for c in image:
@@ -31,6 +34,7 @@ for c in image:
 
 	# print progress percentage
 	i += 1
-	if (i % 1000) == 0:
-		sys.stderr.write('%f\n' % (i / float(len(image)) * 100))
+	if (i % 10000) == 0:
+		speed = i/(time.time() - start) 
+		sys.stderr.write('%.1f%% %.2f K/s ETA: %.0fs\n' % ((i / float(len(image)) * 100), (speed / 1024), (imgsize-i) / speed))
 		sys.stderr.flush()
