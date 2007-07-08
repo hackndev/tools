@@ -239,6 +239,9 @@ static int scan_partitions(void)
 	long blocks;
 	char devname[256];
 
+	einfo("Sleeping a second to allow disks to catchup...");
+	sleep(1);
+
 	einfo("Scanning partitions...");
 
 	f = fopen("/proc/partitions", "r");
@@ -425,10 +428,6 @@ int main(int argc, const char **argv)
 
 	determine_model();
 	scan_partitions();
-
-	add_rootfs("mmcblk0p1", "Fake-Entry.rootfs.ext2");
-	add_rootfs("mmcblk0p1", "Fake-Entry2.rootfs.ext2");
-	add_rootfs("hda4", "Fake-Entry3.rootfs.ext2");
 
 	if (!rootfs_list) {
 		eerror("No rootfs was found!");
