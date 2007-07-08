@@ -1,0 +1,18 @@
+#
+# Kbuild file for klib utils
+#
+
+progs := hndinit
+
+static-y := $(addprefix static/, $(progs))
+shared-y := $(addprefix shared/, $(progs))
+
+# The binary is placed in a subdir, so we need to tell kbuild this
+static/hndinit-y      := hndinit.o ansi.o mach.o loop.o
+shared/hndinit-y      := hndinit.o ansi.o mach.o loop.o
+
+# Clean deletes the static and shared dir
+clean-dirs := static shared
+
+# install only install the shared binaries
+install-y := $(shared-y) 

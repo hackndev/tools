@@ -1,0 +1,76 @@
+This is a tiny (~20K uncompressed static!) init binary designed to run in an
+initramfs.  
+
+It runs standalone so no other executables are required in the initramfs.  
+Upon boot it attempts to mount all connected disks and scans them looking for 
+rootfs images.  It then displays a menu allowing the user to select one with
+the d-pad.
+
+--------
+Building
+--------
+
+Grab a klibc tarball and unpack it:
+
+    wget http://www.kernel.org/pub/linux/libs/klibc/klibc-1.4.tar.bz2
+    tar -jxvf klibc-1.4.tar.bz2
+    cd klibc-1.4.tar.bz2
+
+Put hndinit in the usr directory:
+
+    mv ..../hndinit usr
+
+Adjust the klibc configuration for PXA devices:
+
+    cp usr/hndinit/klibc-config .config
+    touch .config # to update timestamp
+    cp usr/hndinit/MCONFIG usr/klibc/arch/arm
+
+Tell klibc where to find your linux tree by linux to it:
+
+    ln -s ..../linux linux
+
+Setup cross compilation environment variables:
+
+    export CROSS_COMPILE=arm-softfloat-linux-gnueabi-
+    export KLIBCARCH=arm
+
+Add usr/hndinit to the $(obj)/all target in the root Kbuild:
+
+    $(obj)/all:
+        ...
+        $(Q)$(MAKE) $(klibc)=usr/hndinit
+
+Build it!
+
+    make
+
+-----
+Usage
+-----
+
+Create a file called initramfs_list containing something like the following:
+
+    dir /dev 0755 0 0
+    nod /dev/console 0600 0 0 c 5 1
+    nod /dev/loop0 0600 0 0 b 7 0
+    nod /dev/loop1 0600 0 0 b 7 1
+    nod /dev/loop2 0600 0 0 b 7 2
+    nod /dev/loop3 0600 0 0 b 7 3
+    nod /dev/loop4 0600 0 0 b 7 4
+    nod /dev/loop5 0600 0 0 b 7 5
+    nod /dev/loop6 0600 0 0 b 7 6
+    nod /dev/loop7 0600 0 0 b 7 7
+    dir /root 0700 0 0
+    dir /sbin 0755 0 0
+    dir /proc 0755 0 0
+    dir /mnt 0755 0 0
+    dir /sys 0755 0 0
+    file /init ..../klibc/usr/hndinit/static/hndinit 0755 0 0
+
+Fix the path in the last line to the hndinit binary. In your kernel config 
+specify the initramfs_list file as your initramfs source under
+"General Setup".
+
+Note: hndinit will automatically create device nodes for everything
+      in /proc/partitions.
