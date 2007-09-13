@@ -78,10 +78,21 @@ class ParsePatch:
 	self.name = ""
 	self.patch = Patch(patch)
 	if len(self.patch.hunks) > 0:
-	    self.data = self.patch.patchhead + "\n".join(self.patch.hunks)
+	    self.data = self.patch.patchhead + "".join(self.patch.hunks)
 	self.head = self.patch.patchhead.split("\n")[2].split(" ")[1].split("\t")[0]
 	namelist = self.head.split("/")
-	self.name = "-".join(namelist[1:2]) + ".diff"
+	if namelist[1] == "fs":
+		self.name = "-".join(namelist[1:3]) + ".diff"
+	elif namelist[1] == "arch" and namelist[2] == "arm" and namelist[3] == "configs":
+		self.name = "-".join(namelist[1:5]) + ".diff"
+	elif namelist[1] == "arch" and namelist[2] == "arm" and namelist[3] == "mach-pxa":
+		self.name = "-".join(namelist[1:5]) + ".diff"
+	elif namelist[1] == "drivers" or namelist[1] == "include" namelist[1] == "sound":
+		self.name = "-".join(namelist[1:5]) + ".diff"
+	elif namelist[1] == "arch" and namelist[2] == "arm":
+		self.name = "-".join(namelist[1:4]) + ".diff"
+	else:
+		self.name = "-".join(namelist[1:2]) + ".diff"
 	self.ignored = self.patch.ignored
 
 class PatchCollection:
@@ -94,15 +105,17 @@ class PatchCollection:
     def flushfiles(self):
 	data = {}
 	for g in self.patches:
-	    if data.has_key(g.name):
-		data[g.name] += g.data + g.ignored
-	    else:
-		data[g.name] = g.data + g.ignored
+	    if len(g.data) > 0:
+		if data.has_key(g.name):
+		    data[g.name] += g.data + g.ignored
+		else:
+		    data[g.name] = g.data + g.ignored
 	for f, d in data.items():
-	    print "New file " + f
-	    fd = open(f, "w")
-	    fd.write(d)
-	    fd.close()
+	    if len(d) > 0:
+		    print "New file " + f
+		    fd = open(f, "w")
+		    fd.write(d)
+		    fd.close()
 		
 fd = open(sys.argv[1], "r")
 
