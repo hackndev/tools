@@ -87,7 +87,7 @@ class ParsePatch:
 		self.name = "-".join(namelist[1:5]) + ".diff"
 	elif namelist[1] == "arch" and namelist[2] == "arm" and namelist[3] == "mach-pxa":
 		self.name = "-".join(namelist[1:5]) + ".diff"
-	elif namelist[1] == "drivers" or namelist[1] == "include" namelist[1] == "sound":
+	elif namelist[1] == "drivers" or namelist[1] == "include" or namelist[1] == "sound":
 		self.name = "-".join(namelist[1:5]) + ".diff"
 	elif namelist[1] == "arch" and namelist[2] == "arm":
 		self.name = "-".join(namelist[1:4]) + ".diff"
