@@ -114,20 +114,40 @@ void enable_hack()
 
 	SysCurAppDatabase(&card, &db_id);
 
-	err = SysNotifyRegister(card, db_id, sysNotifyLateWakeupEvent, NULL,
-				sysNotifyNormalPriority, NULL);
-	err = SysNotifyRegister(card, db_id, sysNotifyDisplayChangeEvent, NULL,
-				sysNotifyNormalPriority, NULL);
-	err = SysNotifyRegister(card, db_id, sysNotifyAppLaunchingEvent, NULL,
-				sysNotifyNormalPriority, NULL);
-	err = SysNotifyRegister(card, db_id, sysNotifyAppQuittingEvent, NULL,
-				sysNotifyNormalPriority, NULL);
-	err = SysNotifyRegister(card, db_id, sysNotifyIdleTimeEvent, NULL,
-				sysNotifyNormalPriority, NULL);
 
+	err |= SysNotifyRegister(card, db_id, sysNotifyLateWakeupEvent, NULL,
+				sysNotifyNormalPriority, NULL);
+	err |= SysNotifyRegister(card, db_id, sysNotifyDisplayChangeEvent, NULL,
+				sysNotifyNormalPriority, NULL);
+	err |= SysNotifyRegister(card, db_id, sysNotifyAppLaunchingEvent, NULL,
+				sysNotifyNormalPriority, NULL);
+	err |= SysNotifyRegister(card, db_id, sysNotifyAppQuittingEvent, NULL,
+				sysNotifyNormalPriority, NULL);
+	err |= SysNotifyRegister(card, db_id, sysNotifyIdleTimeEvent, NULL,
+				sysNotifyNormalPriority, NULL);
 	FrmCustomAlert(InfoAlert, "GPIOhack",
 	err ? "SysNotifyRegister failed." : "Hack registered",
 	err ? ":-(" : ":-)");
+
+	if (err) {
+		err = 0;
+		err |= SysNotifyUnregister(card, db_id, sysNotifyLateWakeupEvent, 
+					sysNotifyNormalPriority);
+		err |= SysNotifyUnregister(card, db_id, sysNotifyDisplayChangeEvent, 
+					sysNotifyNormalPriority);
+		err |= SysNotifyUnregister(card, db_id, sysNotifyAppLaunchingEvent, 
+					sysNotifyNormalPriority);
+		err |= SysNotifyUnregister(card, db_id, sysNotifyAppQuittingEvent, 
+					sysNotifyNormalPriority);
+		err |= SysNotifyUnregister(card, db_id, sysNotifyIdleTimeEvent, 
+					sysNotifyNormalPriority);
+		FrmCustomAlert(InfoAlert, "GPIOhack",
+		"Hack disabled",
+		err ? ":-(" : ":-)");
+
+	}
+
+
 }
 
 void append_data(
