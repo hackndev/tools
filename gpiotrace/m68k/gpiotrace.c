@@ -131,10 +131,10 @@ void enable_hack()
 }
 
 void append_data(
-		UInt32 gplr_ts, UInt32 gplr0, UInt32 gplr1, UInt32 gplr2, UInt32 gplr_te,
-		UInt32 gpdr_ts, UInt32 gpdr0, UInt32 gpdr1, UInt32 gpdr2, UInt32 gpdr_te,
-		UInt32 gafr_l_ts, UInt32 gafr_l_0, UInt32 gafr_l_1, UInt32 gafr_l_2, UInt32 gafr_l_te,
-		UInt32 gafr_u_ts, UInt32 gafr_u_0, UInt32 gafr_u_1, UInt32 gafr_u_2, UInt32 gafr_u_te) {
+		UInt32 gplr_ts, UInt32 gplr0, UInt32 gplr1, UInt32 gplr2, UInt32 gplr3, UInt32 gplr_te,
+		UInt32 gpdr_ts, UInt32 gpdr0, UInt32 gpdr1, UInt32 gpdr2, UInt32 gpdr3,UInt32 gpdr_te,
+		UInt32 gafr_l_ts, UInt32 gafr_l_0, UInt32 gafr_l_1, UInt32 gafr_l_2, UInt32 gafr_l_3, UInt32 gafr_l_te,
+		UInt32 gafr_u_ts, UInt32 gafr_u_0, UInt32 gafr_u_1, UInt32 gafr_u_2, UInt32 gafr_u_3, UInt32 gafr_u_te) {
 	UInt16 volRefNum;
 	UInt32 volIterator=vfsIteratorStart;
 	FileRef fRef;
@@ -152,14 +152,14 @@ void append_data(
 		(changed&0xffff0000)>>16,changed&0xffff,(val&0xffff0000)>>16,val&0xffff);
 */
 
-	sprintf(buf,	"GPLR [0x%08lx] 0x%08lx 0x%08lx 0x%08lx [0x%08lx] || "
-			"GPDR [0x%08lx] 0x%08lx 0x%08lx 0x%08lx [0x%08lx] || "
-			"GAFR_L [0x%08lx] 0x%08lx 0x%08lx 0x%08lx [0x%08lx] || "
-			"GAFR_U [0x%08lx] 0x%08lx 0x%08lx 0x%08lx [0x%08lx]\n",
-		gplr_ts, gplr0, gplr1, gplr2, gplr_te,
-		gpdr_ts, gpdr0, gpdr1, gpdr2, gpdr_te,
-		gafr_l_ts, gafr_l_0, gafr_l_1, gafr_l_2, gafr_l_te,
-		gafr_u_ts, gafr_u_0, gafr_u_1, gafr_u_2, gafr_u_te);
+	sprintf(buf,	"GPLR [0x%08lx] 0x%08lx 0x%08lx 0x%08lx 0x%08lx [0x%08lx] || "
+			"GPDR [0x%08lx] 0x%08lx 0x%08lx 0x%08lx 0x%08lx [0x%08lx] || "
+			"GAFR_L [0x%08lx] 0x%08lx 0x%08lx 0x%08lx 0x%08lx [0x%08lx] || "
+			"GAFR_U [0x%08lx] 0x%08lx 0x%08lx 0x%08lx 0x%08lx [0x%08lx]\n",
+		gplr_ts, gplr0, gplr1, gplr2, gplr3, gplr_te,
+		gpdr_ts, gpdr0, gpdr1, gpdr2, gpdr3, gpdr_te,
+		gafr_l_ts, gafr_l_0, gafr_l_1, gafr_l_2, gafr_l_3, gafr_l_te,
+		gafr_u_ts, gafr_u_0, gafr_u_1, gafr_u_2, gafr_u_3, gafr_u_te);
 
 	err = VFSFileSeek(fRef, vfsOriginEnd, 0);
 	err = VFSFileWrite (fRef, StrLen(buf), (const void *)buf, &rBytes);
@@ -173,10 +173,10 @@ void append_data(
 UInt32 PilotMain(UInt16 launch_code, MemPtr cmd_PBP, UInt16 launch_flags)
 {
 //	UInt32 GPLR0_p = 0, GPLR1_p = 0, GPLR2_p = 0;
-	UInt32 GPLR0_a[10] = {0}, GPLR1_a[10] = {0}, GPLR2_a[10] = {0}, GPLR_ts[10] = {0}, GPLR_te[10] = {0};
-	UInt32 GPDR0_a[10] = {0}, GPDR1_a[10] = {0}, GPDR2_a[10] = {0}, GPDR_ts[10] = {0}, GPDR_te[10] = {0};
-	UInt32 GAFR_L0_a[10] = {0}, GAFR_L1_a[10] = {0}, GAFR_L2_a[10] = {0}, GAFR_L_ts[10] = {0}, GAFR_L_te[10] = {0};
-	UInt32 GAFR_U0_a[10] = {0}, GAFR_U1_a[10] = {0}, GAFR_U2_a[10] = {0}, GAFR_U_ts[10] = {0}, GAFR_U_te[10] = {0};
+	UInt32 GPLR0_a[10] = {0}, GPLR1_a[10] = {0}, GPLR2_a[10] = {0}, GPLR3_a[10] = {0}, GPLR_ts[10] = {0}, GPLR_te[10] = {0};
+	UInt32 GPDR0_a[10] = {0}, GPDR1_a[10] = {0}, GPDR2_a[10] = {0}, GPDR3_a[10] = {0}, GPDR_ts[10] = {0}, GPDR_te[10] = {0};
+	UInt32 GAFR_L0_a[10] = {0}, GAFR_L1_a[10] = {0}, GAFR_L2_a[10] = {0}, GAFR_L3_a[10] = {0}, GAFR_L_ts[10] = {0}, GAFR_L_te[10] = {0};
+	UInt32 GAFR_U0_a[10] = {0}, GAFR_U1_a[10] = {0}, GAFR_U2_a[10] = {0}, GAFR_U3_a[10] = {0}, GAFR_U_ts[10] = {0}, GAFR_U_te[10] = {0};
 
 //	UInt16 size;
 	UInt16 err;
@@ -215,32 +215,36 @@ for (i=0;i<10;i++) {
 		GPLR0_a[i] = call_arm(GPLR0);
 		GPLR1_a[i] = call_arm(GPLR1);
 		GPLR2_a[i] = call_arm(GPLR2);
+		GPLR3_a[i] = call_arm(GPLR3);
 		GPLR_te[i] = call_arm(RCNR);
 
 		GPDR_ts[i] = call_arm(RCNR);
 		GPDR0_a[i] = call_arm(GPDR0);
 		GPDR1_a[i] = call_arm(GPDR1);
 		GPDR2_a[i] = call_arm(GPDR2);
+		GPDR3_a[i] = call_arm(GPDR3);
 		GPDR_te[i] = call_arm(RCNR);
 
 		GAFR_L_ts[i] = call_arm(RCNR);
 		GAFR_L0_a[i] = call_arm(GAFR_L0);
 		GAFR_L1_a[i] = call_arm(GAFR_L1);
 		GAFR_L2_a[i] = call_arm(GAFR_L2);
+		GAFR_L3_a[i] = call_arm(GAFR_L3);
 		GAFR_L_te[i] = call_arm(RCNR);
 
 		GAFR_U_ts[i] = call_arm(RCNR);
 		GAFR_U0_a[i] = call_arm(GAFR_U0);
 		GAFR_U1_a[i] = call_arm(GAFR_U1);
 		GAFR_U2_a[i] = call_arm(GAFR_U2);
+		GAFR_U3_a[i] = call_arm(GAFR_U3);
 		GAFR_U_te[i] = call_arm(RCNR);
 }
 for (i=0;i<10;i++) {
 		append_data(
-			GPLR_ts[i], GPLR0_a[i], GPLR1_a[i], GPLR2_a[i], GPLR_te[i],
-			GPDR_ts[i], GPDR0_a[i], GPDR1_a[i], GPDR2_a[i], GPDR_te[i],
-			GAFR_L_ts[i], GAFR_L0_a[i], GAFR_L1_a[i], GAFR_L2_a[i], GAFR_L_te[i],
-			GAFR_U_ts[i], GAFR_U0_a[i], GAFR_U1_a[i], GAFR_U2_a[i], GAFR_U_te[i]
+			GPLR_ts[i], GPLR0_a[i], GPLR1_a[i], GPLR2_a[i], GPLR3_a[i], GPLR_te[i],
+			GPDR_ts[i], GPDR0_a[i], GPDR1_a[i], GPDR2_a[i], GPDR3_a[i], GPDR_te[i],
+			GAFR_L_ts[i], GAFR_L0_a[i], GAFR_L1_a[i], GAFR_L2_a[i], GAFR_L3_a[i], GAFR_L_te[i],
+			GAFR_U_ts[i], GAFR_U0_a[i], GAFR_U1_a[i], GAFR_U2_a[i], GAFR_U3_a[i], GAFR_U_te[i]
 		);
 }
 //		if (GPLR0_p ^ GPLR0_a) {

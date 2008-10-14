@@ -132,7 +132,7 @@ def parsegroup(s):
 
 #### Data ####
 
-NGPIOS = 96
+NGPIOS = 121
 IN = 0
 OUT = 1
 AF_TABLE = {
