@@ -1,0 +1,69 @@
+#include "gpiotrace_r.h"
+
+APPLICATIONICONNAME ID 1000 "GPIOTrace"
+VERSION "0.1"
+
+ICON
+BEGIN
+	BITMAP "icons/icon_bw.bmp"  BPP 1 TRANSPARENTINDEX 0  DENSITY 1
+	BITMAP "icons/icon_256.bmp" BPP 8 TRANSPARENT 0 255 0 DENSITY 1
+        BITMAP "icons/icon_hr.bmp"  BPP 8 TRANSPARENT 0 255 0 DENSITY 2
+END
+
+SMALLICON
+BEGIN
+	BITMAP "icons/icon_bw_s.bmp"  BPP 1 TRANSPARENTINDEX 0  DENSITY 1
+	BITMAP "icons/icon_256_s.bmp" BPP 8 TRANSPARENT 0 255 0 DENSITY 1
+        BITMAP "icons/icon_hr_s.bmp"  BPP 8 TRANSPARENT 0 255 0 DENSITY 2
+END
+
+FORM ID MainForm AT (0 0 160 160) NOFRAME USABLE HELPID GnuGpl MODAL
+BEGIN
+        TITLE "GPIOTrace v0.1"
+	LABEL "Hello" AUTOID  AT (2 12) FONT 0
+	LABEL "World" AUTOID  AT (12 22) FONT 0
+	LABEL "Blah Blah" AUTOID  AT (12 32) FONT 0
+
+	LABEL "Visit us at www.hackndev.com!" AUTOID  AT (12 142) FONT 0
+END
+
+ALERT ID InfoAlert INFORMATION
+BEGIN
+    TITLE "Information"
+    MESSAGE "^1\n^2\n^3"
+    BUTTONS  "OK"
+END	    
+
+STRING GnuGpl	"WhineHack.\n"\
+		"Copyright (C) 2006 Alex Osborne\n"\
+		"\n"\
+		"www.hackndev.com\n"\
+		"\n"\
+		"This program is free softwa-\n"\
+		"re. you can redistribute it\n"\
+		"and/or modify it under the\n"\
+		"terms of the GNU General\n"\
+		"Public License as published\n"\
+		"by the Free Software\n"\
+		"Foundation.\n"\
+		"\n"\
+		"This program is distributed\n"\
+		"in the hope that it will be\n"\
+		"useful, but WITHOUT ANY\n"\
+		"WARRANTY; without even\n"\
+		"the implied warranty of\n"\
+		"MERCHANTABILITY or\n"\
+		"FITNESS FOR A PARTICULAR\n"\
+		"PURPOSE.  See the GNU\n"\
+		"General Public License for\n"\
+		"more details.\n"\
+		"\n"\
+		"You should have received a\n"\
+		"copy of the GNU General\n"\
+		"Public License along with\n"\
+		"this program; if not, write\n"\
+		"to the Free Software\n"\
+		"Foundation, Inc., 59 Temple\n"\
+		"Place, Suite 330, Boston, MA\n"\
+		"02111-1307 USA"
+
