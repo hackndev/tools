@@ -15,4 +15,5 @@
 87	gsm_power
 94	battery_detect_n
 113	sd_detect
+114	USB pullup
 116	speaker_power

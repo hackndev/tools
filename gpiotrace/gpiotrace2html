@@ -70,7 +70,7 @@ def main():
 def getname(gpio, (level, dir, af), names):
 	if gpio in names:
 		return names[gpio]
-	signal = AF_TABLE.get((gpio, dir, af), 'GPIO')
+	signal = AF_TABLE.get((gpio, dir, af), 'af%d' % af)
 	return signal
 
 def parsenames(f):
