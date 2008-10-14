@@ -8,11 +8,17 @@ import sys, time
 
 def main():
 	if len(sys.argv) < 2:
-		sys.stderr.write('Usage: %s GPIO.txt' % sys.argv[0])
+		sys.stderr.write('Usage: %s GPIO.txt [machine.gpios]\n' % sys.argv[0])
+		sys.stderr.write('      GPIO.txt - output of gpiotrace.prc\n')
+		sys.stderr.write(' machine.gpios - manual gpio names. format: <number><tab><name>\n')
 		sys.exit(1)
 	
 	f = open(sys.argv[1])
 	times, rows = parse(f)
+
+	names = {}
+	if len(sys.argv) > 2:
+		names = parsenames(open(sys.argv[2]))
 
 	print '<html><head><style>'
 	print '''
@@ -46,7 +52,7 @@ def main():
 			print '</tr>'
 
 
-		print '<tr align="right"><td>%s <b>%d</b></td>' % (getname(gpio, row[0]), gpio)
+		print '<tr align="right"><td>%s <b>%d</b></td>' % (getname(gpio, row[0],names ), gpio)
 		for level, dir, af in row:
 			print '<td class="level%ddir%d">&nbsp;&nbsp;</td>' % (level, dir)
 
@@ -57,9 +63,21 @@ def main():
 
 	print '</body></html>'
 
-def getname(gpio, (level, dir, af)):
+def getname(gpio, (level, dir, af), names):
+	if gpio in names:
+		return names[gpio]
 	signal = AF_TABLE.get((gpio, dir, af), 'GPIO')
 	return signal
+
+def parsenames(f):
+	names = {}
+	for line in f:
+		line = line.strip()
+		if not line or line[0] == '#': continue
+		gpio, name = line.split('\t')
+		names[int(gpio)] = name
+	return names
+
 	
 
 def parse(f):
