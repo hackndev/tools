@@ -22,10 +22,10 @@ def main():
 
 	print '<html><head><style>'
 	print '''
-	.level0dir0 { background: #999; }
-	.level0dir1 { background: #666; }
-	.level1dir0 { background: #99f; }
-	.level1dir1 { background: #33f;  }
+	.level0dir0 { background: #999; color: white; }
+	.level0dir1 { background: #666; color: white; }
+	.level1dir0 { background: #99f; color: white;}
+	.level1dir1 { background: #33f; color: white; }
 
 	'''
 
@@ -53,8 +53,12 @@ def main():
 
 
 		print '<tr align="right"><td>%s <b>%d</b></td>' % (getname(gpio, row[0],names ), gpio)
+		lastaf = None
 		for level, dir, af in row:
-			print '<td class="level%ddir%d">&nbsp;&nbsp;</td>' % (level, dir)
+			if lastaf is None or lastaf == af:
+				print '<td class="level%ddir%d">&nbsp;</td>' % (level, dir)
+			else:
+				print '<td class="level%ddir%d">AF%d</td>' % (level, dir, af)
 
 		print '</tr>'
 
