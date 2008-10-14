@@ -1,0 +1,453 @@
+#!/usr/bin/env python
+
+import sys, time
+
+# GPLR [0xc5174d51] 0x119401ff 0xfc12c000 0x904d6fff [0xc5174d51] || GPDR [0xc5174d51] 0xcf9905fc 0xff62bfbd 0x93ccffff [0xc5174d51] || GAFR_L [0xc5174d51] 0x0e000000 0x60000002 0x22aaaaaa [0xc5174d51] || GAFR_U [0xc5174d51] 0xa500001a 0xaaa04959 0x45440f08 [0xc5174d51]
+
+
+
+def main():
+	if len(sys.argv) < 2:
+		sys.stderr.write('Usage: %s GPIO.txt' % sys.argv[0])
+		sys.exit(1)
+	
+	f = open(sys.argv[1])
+	times, rows = parse(f)
+
+	print '<html><head><style>'
+	print '''
+	.level0dir0 { background: #999; }
+	.level0dir1 { background: #666; }
+	.level1dir0 { background: #99f; }
+	.level1dir1 { background: #33f;  }
+
+	'''
+
+	print '</style></head><body><h1>GPIO trace</h1>'
+	print '<h2>Key</h2>'
+	print '<table>'
+	print '<tr><th>Direction=IN:</th><td class="level0dir0">LO</td><td class="level1dir0">HI</td></tr>'
+	print '<tr><th>Direction=OUT:</th><td class="level0dir1">LO</td><td class="level1dir1">HI</td></tr>'
+	print '</table>'
+	print '<h2>Parsed: %s</h2>' % time.asctime()
+	print '<table border=1>'
+
+	for gpio, row in sorted(rows.iteritems()):
+
+		if gpio % 20 == 0:
+			print '<tr><th>Frame:</th>' 
+			for i in xrange(len(times)):
+				print '<td>%02d</td>' % i
+			print '</tr>'
+			
+			print '<tr><th>Seconds:</th>'
+			for t in times:
+				print '<td>%d</td>' % t
+			print '</tr>'
+
+
+		print '<tr align="right"><td>%s <b>%d</b></td>' % (getname(gpio, row[0]), gpio)
+		for level, dir, af in row:
+			print '<td class="level%ddir%d">&nbsp;&nbsp;</td>' % (level, dir)
+
+		print '</tr>'
+
+	print '</table>'
+		
+
+	print '</body></html>'
+
+def getname(gpio, (level, dir, af)):
+	signal = AF_TABLE.get((gpio, dir, af), 'GPIO')
+	return signal
+	
+
+def parse(f):
+	times = []
+	rows = {}
+	starttime = None
+
+	lastframe = (None, None, None, None)
+	for line in f:
+		line = line.replace('[','').replace(']', '')
+		(lr, t), (dr, t), (af_l, t), (af_u, t) = [parsegroup(group) for group in line.strip().split('||')]
+
+		frame = (lr, dr, af_l, af_u)
+		if lastframe == frame:
+			continue
+		lastframe = frame
+
+		if starttime is None: starttime = t
+		times.append(t - starttime)
+
+		for gpio in xrange(NGPIOS):
+			level = (lr >> gpio) & 1
+			dir = (dr >> gpio) & 1
+
+			#       16-31,       48-63,
+			# 0-15,        32-47,       ...
+			bank = gpio // 32
+			af =  ((af_l if gpio % 32 < 16 else af_u) >> (gpio % 16) * 2 >> bank * 32) & 3
+
+			row = rows.get(gpio, [])
+			row.append((int(level), int(dir), int(af)))
+			rows[gpio] = row
+
+	return times, rows	
+
+def parsegroup(s):
+	"""
+	Parse a group of readings into a big int and timestamp pair. Example:
+
+	Input: "GPLR [0xc5174d54] 0x019405ff 0xfc12c000 0x924d6fff [0xc5174d54]" 
+	Output: (0x924d7ffffc12c000019401ffL, 3306638676)
+	"""
+	values = [long(x,16) for x in s.strip().split()[2:]]
+	timestamp = values.pop()
+	combined = sum([x << 32 * i for i, x in enumerate(values)])
+	return combined, timestamp
+
+
+#### Data ####
+
+NGPIOS = 96
+IN = 0
+OUT = 1
+AF_TABLE = {
+ (2, IN, 0) : "SYS_EN",
+ (5, IN, 0) : "PWR_CAP<0>",
+ (6, IN, 0) : "PWR_CAP<1>",
+ (7, IN, 0) : "PWR_CAP<2>",
+ (8, IN, 0) : "PWR_CAP<3>",
+ (9, IN, 3) : "FFUART_CTS",
+ (9, OUT, 1) : "HZ_CLK",
+ (9, OUT, 3) : "CHOUT_0",
+ (10, IN, 1) : "FFUART_DCD",
+ (10, IN, 3) : "USB_P3_5",
+ (10, OUT, 1) : "HZ_CLK",
+ (10, OUT, 3) : "CHOUT_1",
+ (11, IN, 1) : "EXT_SYNC_0",
+ (11, IN, 2) : "SSP2_RXD",
+ (11, IN, 3) : "USB_P3_1",
+ (11, OUT, 1) : "CHOUT_0",
+ (11, OUT, 2) : "PWM2_OUT",
+ (11, OUT, 3) : "48_MHz",
+ (12, IN, 1) : "EXT_SYNC_1",
+ (12, IN, 2) : "CIF_DD_7",
+ (12, OUT, 1) : "CHOUT_1",
+ (12, OUT, 2) : "PWM3_OUT",
+ (12, OUT, 3) : "48_MHz",
+ (13, IN, 1) : "CLK_EXT",
+ (13, IN, 2) : "KP_KDIN_7",
+ (13, IN, 3) : "KP_MKIN_7",
+ (13, OUT, 1) : "SSP2_TXD",
+ (14, IN, 1) : "LCD_VSYNC",
+ (14, IN, 2) : "SSP2_SFRM",
+ (14, OUT, 3) : "UCLK",
+ (15, OUT, 1) : "nPCE_1",
+ (15, OUT, 2) : "nCS_1",
+ (16, IN, 1) : "KP_MKIN_5",
+ (16, OUT, 2) : "PWM0_OUT",
+ (16, OUT, 3) : "FFUART_TXD",
+ (17, IN, 1) : "KP_MKIN_6",
+ (17, IN, 2) : "CIF_DD_6",
+ (17, OUT, 2) : "PWM1_OUT",
+ (18, IN, 1) : "RDY",
+ (19, IN, 1) : "SSP2_SCLK",
+ (19, IN, 3) : "FFUART_RXD",
+ (19, OUT, 2) : "LCD_CS",
+ (19, OUT, 3) : "nURST",
+ (20, IN, 1) : "DREQ_0",
+ (20, IN, 2) : "MBREQ",
+ (20, OUT, 1) : "nSDCS_2",
+ (21, OUT, 1) : "nSDCS_3",
+ (21, OUT, 2) : "DVAL_0",
+ (21, OUT, 3) : "MBGNT",
+ (22, IN, 1) : "SSP2_EXTCLK",
+ (22, IN, 2) : "SSP2_SCLKEN",
+ (22, IN, 3) : "SSP2_SCLK",
+ (22, OUT, 1) : "KP_MKOUT_7",
+ (22, OUT, 2) : "SSP2_SYSCLK",
+ (23, IN, 2) : "SSP2_SCLKEN",
+ (23, OUT, 1) : "CIF_MCLK",
+ (23, OUT, 2) : "SSP1_SCLK",
+ (24, IN, 1) : "CIF_FV",
+ (24, IN, 2) : "SSP1_SFRM",
+ (25, IN, 1) : "CIF_LV",
+ (25, OUT, 2) : "SSP1_TXD",
+ (26, IN, 1) : "SSP1_RXD",
+ (26, IN, 2) : "CIF_PCLK",
+ (26, IN, 3) : "FFUART_CTS",
+ (27, IN, 1) : "SSP2_EXTCLK",
+ (27, IN, 2) : "SSP1_SCLKEN",
+ (27, IN, 3) : "CIF_DD_0",
+ (27, OUT, 1) : "SSP1_SYSCLK",
+ (27, OUT, 3) : "FFUART_RTS",
+ (28, IN, 1) : "AC97_BITCLK",
+ (28, IN, 2) : "I2S_BITCLK_IN",
+ (28, IN, 3) : "SSP1_SFRM",
+ (28, OUT, 1) : "I2S_BITCLK_OUT",
+ (29, IN, 1) : "AC97_SDATA_IN_0",
+ (29, IN, 2) : "I2S_SDATA_IN",
+ (29, IN, 3) : "SSP1_SCLK",
+ (29, OUT, 1) : "SSP2_RXD",
+ (29, OUT, 3) : "SSP2_SCLK",
+ (30, OUT, 1) : "I2S_SDATA_OUT",
+ (30, OUT, 2) : "AC97_SDATA_OUT",
+ (30, OUT, 3) : "USB_P3_2",
+ (31, OUT, 1) : "I2S_SYNC",
+ (31, OUT, 2) : "AC97_SYNC",
+ (31, OUT, 3) : "USB_P3_6",
+ (32, OUT, 1) : "MSSCLK",
+ (32, OUT, 2) : "MMC_CLK",
+ (33, IN, 1) : "FFUART_RXD",
+ (33, IN, 2) : "FFUART_DSR",
+ (33, OUT, 1) : "DVAL_1",
+ (33, OUT, 2) : "nCS_5",
+ (33, OUT, 3) : "MBGNT",
+ (34, IN, 1) : "FFUART_RXD",
+ (34, IN, 2) : "KP_MKIN_3",
+ (34, IN, 3) : "SSP3_SCLK",
+ (34, OUT, 1) : "USB_P2_2",
+ (35, IN, 1) : "FFUART_CTS",
+ (35, IN, 2) : "USB_P2_1",
+ (35, IN, 3) : "SSP3_SFRM",
+ (35, OUT, 2) : "KP_MKOUT_6",
+ (35, OUT, 3) : "SSP3_TXD",
+ (36, IN, 1) : "FFUART_DCD",
+ (36, IN, 2) : "SSP2_SCLK",
+ (36, IN, 3) : "KP_MKIN_7",
+ (36, OUT, 1) : "USB_P2_4",
+ (37, IN, 1) : "FFUART_DSR",
+ (37, IN, 2) : "SSP2_SFRM",
+ (37, IN, 3) : "KP_MKIN_3",
+ (37, OUT, 1) : "USB_P2_8",
+ (37, OUT, 3) : "FFUART_TXD",
+ (38, IN, 1) : "FFUART_RI",
+ (38, IN, 2) : "KP_MKIN_4",
+ (38, IN, 3) : "USB_P2_3",
+ (38, OUT, 1) : "SSP3_TXD",
+ (38, OUT, 2) : "SSP2_TXD",
+ (38, OUT, 3) : "PWM1_OUT",
+ (39, IN, 1) : "KP_MKIN_4",
+ (39, IN, 3) : "SSP3_SFRM",
+ (39, OUT, 1) : "USB_P2_6",
+ (39, OUT, 2) : "FFUART_TXD",
+ (40, IN, 1) : "SSP2_RXD",
+ (40, IN, 3) : "USB_P2_5",
+ (40, OUT, 1) : "KP_MKOUT_6",
+ (40, OUT, 2) : "FFUART_DTR",
+ (40, OUT, 3) : "SSP3_SCLK",
+ (41, IN, 1) : "FFUART_RXD",
+ (41, IN, 2) : "USB_P2_7",
+ (41, IN, 3) : "SSP3_RXD",
+ (41, OUT, 1) : "KP_MKOUT_7",
+ (41, OUT, 2) : "FFUART_RTS",
+ (42, IN, 1) : "BTUART_RXD",
+ (42, IN, 2) : "FICP_RXD",
+ (42, OUT, 3) : "CIF_MCLK",
+ (43, IN, 3) : "CIF_FV",
+ (43, OUT, 1) : "FICP_TXD",
+ (43, OUT, 2) : "BTUART_TXD",
+ (44, IN, 1) : "BTUART_CTS",
+ (44, IN, 3) : "CIF_LV",
+ (45, IN, 3) : "CIF_PCLK",
+ (45, OUT, 1) : "AC97_SYSCLK",
+ (45, OUT, 2) : "BTUART_RTS",
+ (45, OUT, 3) : "SSP3_SYSCLK",
+ (46, IN, 1) : "FICP_RXD",
+ (46, IN, 2) : "STUART_RXD",
+ (46, OUT, 2) : "PWM2_OUT",
+ (47, IN, 1) : "CIF_DD_0",
+ (47, OUT, 1) : "STUART_TXD",
+ (47, OUT, 2) : "FICP_TXD",
+ (47, OUT, 3) : "PWM3_OUT",
+ (48, IN, 1) : "CIF_DD_5",
+ (48, OUT, 1) : "BB_OB_DAT_1",
+ (48, OUT, 2) : "nPOE",
+ (49, OUT, 2) : "nPWE",
+ (50, IN, 1) : "CIF_DD_3",
+ (50, IN, 3) : "SSP2_SCLK",
+ (50, OUT, 1) : "BB_OB_DAT_2",
+ (50, OUT, 2) : "nPIOR",
+ (51, IN, 1) : "CIF_DD_2",
+ (51, OUT, 1) : "BB_OB_DAT_3",
+ (51, OUT, 2) : "nPIOW",
+ (52, IN, 1) : "CIF_DD_4",
+ (52, IN, 2) : "SSP3_SCLK",
+ (52, OUT, 1) : "BB_OB_CLK",
+ (53, IN, 1) : "FFUART_RXD",
+ (53, IN, 2) : "USB_P2_3",
+ (53, OUT, 1) : "BB_OB_STB",
+ (53, OUT, 2) : "CIF_MCLK",
+ (53, OUT, 3) : "SSP1_SYSCLK",
+ (54, IN, 2) : "BB_OB_WAIT",
+ (54, IN, 3) : "CIF_PCLK",
+ (54, OUT, 2) : "nPCE_2",
+ (55, IN, 1) : "CIF_DD_1",
+ (55, IN, 2) : "BB_IB_DAT_1",
+ (55, OUT, 2) : "nPREG",
+ (56, IN, 1) : "nPWAIT",
+ (56, IN, 2) : "BB_IB_DAT_2",
+ (56, OUT, 1) : "USB_P3_4",
+ (57, IN, 1) : "nIOIS16",
+ (57, IN, 2) : "BB_IB_DAT_3",
+ (57, OUT, 3) : "SSP1_TXD",
+ (58, OUT, 2) : "LCD_LDD_0",
+ (59, OUT, 2) : "LCD_LDD_1",
+ (60, OUT, 2) : "LCD_LDD_2",
+ (61, OUT, 2) : "LCD_LDD_3",
+ (62, OUT, 2) : "LCD_LDD_4",
+ (63, OUT, 2) : "LCD_LDD_5",
+ (64, OUT, 2) : "LCD_LDD_6",
+ (65, OUT, 2) : "LCD_LDD_7",
+ (66, OUT, 2) : "LCD_LDD_8",
+ (67, OUT, 2) : "LCD_LDD_9",
+ (68, OUT, 2) : "LCD_LDD_10",
+ (69, OUT, 2) : "LCD_LDD_11",
+ (70, OUT, 2) : "LCD_LDD_12",
+ (71, OUT, 2) : "LCD_LDD_13",
+ (72, OUT, 2) : "LCD_LDD_14",
+ (73, OUT, 2) : "LCD_LDD_15",
+ (74, OUT, 2) : "LCD_FCLK",
+ (75, OUT, 2) : "LCD_LCLK",
+ (76, OUT, 2) : "LCD_PCLK",
+ (77, OUT, 2) : "LCD_BIAS",
+ (78, OUT, 1) : "nPCE_2",
+ (78, OUT, 2) : "nCS_2",
+ (79, OUT, 1) : "PSKTSEL",
+ (79, OUT, 2) : "nCS_3",
+ (79, OUT, 3) : "PWM2_OUT",
+ (80, IN, 1) : "DREQ_1",
+ (80, IN, 2) : "MBREQ",
+ (80, OUT, 2) : "nCS_4",
+ (80, OUT, 3) : "PWM3_OUT",
+ (81, IN, 2) : "CIF_DD_0",
+ (81, OUT, 1) : "SSP3_TXD",
+ (81, OUT, 2) : "BB_OB_DAT_0",
+ (82, IN, 1) : "SSP3_RXD",
+ (82, IN, 2) : "BB_IB_DAT_0",
+ (82, IN, 3) : "CIF_DD_5",
+ (82, OUT, 3) : "FFUART_DTR",
+ (83, IN, 1) : "SSP3_SFRM",
+ (83, IN, 2) : "BB_IB_CLK",
+ (83, IN, 3) : "CIF_DD_4",
+ (83, OUT, 2) : "FFUART_TXD",
+ (83, OUT, 3) : "FFUART_RTS",
+ (84, IN, 1) : "SSP3_SCLK",
+ (84, IN, 2) : "BB_IB_STB",
+ (84, IN, 3) : "CIF_FV",
+
+ (85, IN, 1) : "FFUART_RXD",
+ (85, IN, 2) : "DREQ_2",
+ (85, IN, 3) : "CIF_LV",
+ (85, OUT, 1) : "nPCE_1",
+ (85, OUT, 2) : "BB_IB_WAIT",
+
+ (86, IN, 1) : "SSP2_RXD",
+ (86, IN, 3) : "USB_P3_5",
+ (86, OUT, 1) : "nPCE_1",
+ (86, OUT, 2) : "LCD_LDD_16",
+
+ (87, IN, 1) : "nPCE_2",
+ (87, IN, 3) : "USB_P3_1",
+ (87, OUT, 1) : "SSP2_TXD",
+ (87, OUT, 2) : "LCD_LDD_17",
+ (87, OUT, 3) : "SSP2_SFRM",
+ (88, IN, 1) : "USBH1_PWR",
+ (88, IN, 2) : "SSP2_RXD",
+ (88, IN, 3) : "SSP2_SFRM",
+ (89, IN, 1) : "SSP3_RXD",
+ (89, IN, 3) : "FFUART_RI",
+ (89, OUT, 1) : "AC97_SYSCLK",
+ (89, OUT, 2) : "USBH1_PEN",
+ (89, OUT, 3) : "SSP2_TXD",
+ (90, IN, 1) : "KP_MKIN_5",
+ (90, IN, 2) : "USB_P3_5",
+ (90, IN, 3) : "CIF_DD_4",
+ (90, OUT, 2) : "nURST",
+ (91, IN, 1) : "KP_MKIN_6",
+ (91, IN, 2) : "USB_P3_1",
+ (91, IN, 3) : "CIF_DD_5",
+ (91, OUT, 2) : "UCLK",
+ (92, IN, 1) : "MMC_DAT_0",
+ (92, OUT, 2) : "MSBS",
+ (93, IN, 1) : "KP_DKIN_0",
+ (93, IN, 2) : "CIF_DD_6",
+ (93, OUT, 1) : "AC97_SDATA_OUT",
+ (94, IN, 1) : "KP_DKIN_1",
+ (94, IN, 2) : "CIF_DD_5",
+ (94, OUT, 1) : "AC97_SYNC",
+ (95, IN, 1) : "KP_DKIN_2",
+ (95, IN, 2) : "CIF_DD_4",
+ (95, IN, 3) : "KP_MKIN_6",
+ (95, OUT, 1) : "AC97_nRESET",
+ (96, IN, 1) : "KP_DKIN_3",
+ (96, IN, 2) : "MBREQ",
+ (96, IN, 3) : "FFUART_RXD",
+ (96, OUT, 2) : "DVAL_1",
+ (96, OUT, 3) : "KP_MKOUT_6",
+ (97, IN, 1) : "KP_DKIN_4",
+ (97, IN, 2) : "DREQ_1",
+ (97, IN, 3) : "KP_MKIN_3",
+ (97, OUT, 2) : "MBGNT",
+ (98, IN, 1) : "KP_DKIN_5",
+ (98, IN, 2) : "CIF_DD_0",
+ (98, IN, 3) : "KP_MKIN_4",
+ (98, OUT, 1) : "AC97_SYSCLK",
+ (98, OUT, 3) : "FFUART_RTS",
+ (99, IN, 1) : "KP_DKIN_6",
+ (99, IN, 2) : "AC97_SDATA_IN_1",
+ (99, IN, 3) : "KP_MKIN_5",
+ (99, OUT, 3) : "FFUART_TXD",
+ (100, IN, 1) : "KP_MKIN_0",
+ (100, IN, 2) : "DREQ_2",
+ (100, IN, 3) : "FFUART_CTS",
+ (101, IN, 1) : "KP_MKIN_1",
+ (102, IN, 1) : "KP_MKIN_2",
+ (102, IN, 3) : "FFUART_RXD",
+ (102, OUT, 1) : "nPCE_1",
+ (103, IN, 1) : "CIF_DD_3",
+ (103, OUT, 2) : "KP_MKOUT_0",
+ (104, IN, 1) : "CIF_DD_2",
+ (104, OUT, 1) : "PSKTSEL",
+ (104, OUT, 2) : "KP_MKOUT_1",
+ (105, IN, 1) : "CIF_DD_1",
+ (105, OUT, 2) : "KP_MKOUT_2",
+ (106, IN, 1) : "CIF_DD_9",
+ (106, OUT, 2) : "KP_MKOUT_3",
+ (107, IN, 1) : "CIF_DD_8",
+ (107, OUT, 2) : "KP_MKOUT_4",
+ (108, IN, 1) : "CIF_DD_7",
+ (108, OUT, 2) : "KP_MKOUT_5",
+ (109, IN, 1) : "MMC_DAT_1",
+ (109, IN, 2) : "MSSDIO",
+ (110, IN, 1) : "MMC_DAT_2",
+ (111, IN, 1) : "MMC_DAT_3",
+ (112, IN, 1) : "MMC_CMD",
+ (112, IN, 2) : "nMSINS",
+ (113, IN, 3) : "USB_P3_3",
+ (113, OUT, 1) : "I2S_SYSCLK",
+ (113, OUT, 2) : "AC97_nRESET",
+ (114, IN, 1) : "CIF_DD_1",
+ (114, OUT, 1) : "UEN",
+ (114, OUT, 2) : "UVS0",
+ (115, IN, 1) : "DREQ_0",
+ (115, IN, 2) : "CIF_DD_3",
+ (115, IN, 3) : "MBREQ",
+ (115, OUT, 1) : "UEN",
+ (115, OUT, 2) : "nUVS1",
+ (115, OUT, 3) : "PWM1_OUT",
+ (116, IN, 1) : "CIF_DD_2",
+ (116, IN, 2) : "AC97_SDATA_IN_0",
+ (116, IN, 3) : "UDET",
+ (116, OUT, 1) : "DVAL_0",
+ (116, OUT, 2) : "nUVS2",
+ (116, OUT, 3) : "MBGNT",
+ (117, IN, 1) : "I2C_SCL",
+ (118, IN, 1) : "I2C_SDA",
+ (119, IN, 1) : "USBH2_PWR",
+ (120, OUT, 2) : "USBH2_PEN",
+}
+
+if __name__ == '__main__': main()
