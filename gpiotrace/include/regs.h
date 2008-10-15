@@ -1,3 +1,5 @@
+#define CHIP_SELECT2
+
 #ifndef _REGS_H_
 #define _REGS_H_
 
@@ -22,4 +24,8 @@
 #define GAFR_U3         0x90e00158
 
 #define RCNR		0x90900000
+
+#ifdef CHIP_SELECT2
+#define CS2REGS		0x08000000
+#endif
 #endif
