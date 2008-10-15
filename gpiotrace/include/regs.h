@@ -16,12 +16,12 @@
 #define GAFR_L0         0x90e00054
 #define GAFR_L1         0x90e0005c
 #define GAFR_L2         0x90e00064
-#define GAFR_L3         0x90e00154
+#define GAFR_L3         0x90e0006c
 
 #define GAFR_U0         0x90e00058
 #define GAFR_U1         0x90e00060
 #define GAFR_U2         0x90e00068
-#define GAFR_U3         0x90e00158
+#define GAFR_U3         0x90e00070
 
 #define RCNR		0x90900000
 
