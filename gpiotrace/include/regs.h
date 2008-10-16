@@ -1,4 +1,3 @@
-#define CHIP_SELECT2
 
 #ifndef _REGS_H_
 #define _REGS_H_
@@ -26,6 +25,25 @@
 #define RCNR		0x90900000
 
 #ifdef CHIP_SELECT2
-#define CS2REGS		0x08000000
+#define REGISTER	0x08000000
+#define SIZE		( 0xac / 4 )
 #endif
+
+#ifdef UHC
+#define REGISTER	0x9c000000
+#define SIZE		( 0x6c / 4 )	
+#endif
+
+#ifdef UDC
+#define REGISTER	0x90600000
+#define SIZE		( 0x045c / 4 )	
+#endif
+
+#ifdef PM
+#define REGISTER	0x90f00000
+#define SIZE		( 0xfc / 4 )	
+#endif
+
+
+
 #endif
