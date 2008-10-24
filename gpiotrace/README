@@ -1,0 +1,26 @@
+*trace
+
+Usage
+=====
+Run *trace.prc (choose which dump you need) and do action you want to trace. On next 
+run *trace should be unregistered and you can get dump on SD/MMC card located in /GPIO.txt.
+
+For gpiotrace you can use gpiotrace2html (by Alex) with simple usage:
+
+gpiotrace2html GPIO.txt already_known.gpios > result.html
+
+already_known.gpios has syntax
+GPIO_number<tab>GPIO_name
+
+You can also try slow, but configurable shell parser gpiotrace.sh.
+
+gpiotrace.sh [GPLR|GPDR|GAFR_L|GAFR_U] GPIO.txt
+
+
+If you want to add other registers for dump - check include/regs.h for inspiration.
+
+History
+=======
+
+Marex took WhineHack (by Alex) and changed it into dumping GPIO related registers. Sleep_Walker
+add other dumping to already done code. End of story.
