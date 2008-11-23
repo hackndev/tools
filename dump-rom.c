@@ -15,7 +15,7 @@
 int main(int argc, char *argv[])
 {
 	int fd;
-	unsigned long len;
+	unsigned long len, i;
 	void *map;
 	void *va;
 
@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 	fflush(stderr);
 
 	/* dumping in native byte order */
-	for(unsigned long i = 0; i<len; i++) {
+	for(i = 0; i<len; i++) {
 		int val;
 		va = map + i;
 		val = *((unsigned char *) va);
