@@ -97,6 +97,7 @@ ask_and_add_temp_file() {
 
 cons_error() {
   dialog --title "$1" --msgbox "Error occured: \n$@" 10 40
+  exit 1
 }
 
 cons_info() {
@@ -157,6 +158,7 @@ cons_download() {
 
 kde_error() {
   kdialog --title "$TITLE" --error "Error occured: \n$@"
+  exit 1
 }
 
 kde_info() {
@@ -261,6 +263,7 @@ kde_download() {
 
 gtk_error() {
   zenity --title "$TITLE" --error --text="Error occured: \n$@"
+  exit 1
 }
 
 gtk_info() {
@@ -616,9 +619,29 @@ do_repartition_wizard() {
     SHORT_CARD_DEVICE="`LANG=en ls -l $LONG_CARD_DEVICE | sed 's#.*/##'`"
     CARD_DEVICE="/dev/$SHORT_CARD_DEVICE"
     [ -b "$CARD_DEVICE" ] || script_error
-    echo "'$CARD_DEVICE'"
 
     fdisk_repartition_card
+  elif is_true `$get_bool "Would you like at least recreate new EXT2 filesystem\nYou probably want at least this option when you already have EXT2 partition."`; then
+    #to be done
+    if is_true `$get_bool "Do you know, which device in /dev filesystem represents your card?"`; then
+      LONG_CARD_DEVICE="`$get_string "Which device is your SD/MMC card?"`"
+      [ -b "$LONG_CARD_DEVICE" ] || { $error "Sorry, the device you entered doesn't exist." ; return 1 ;}
+    else
+      unset LONG_CARD_DEVICE
+      if is_true `$get_bool "Should I try to autodetect your card?"`; then
+	detect_card_device || return 1
+      fi
+      if [ -z "$LONG_CARD_DEVICE" ]; then
+	error "Sorry, I can't repartition card if I don't know which device it is"
+	return 1
+      fi
+    fi
+
+    SHORT_CARD_DEVICE="`LANG=en ls -l $LONG_CARD_DEVICE | sed 's#.*/##'`"
+    CARD_DEVICE="/dev/$SHORT_CARD_DEVICE"
+    [ -b "$CARD_DEVICE" ] || script_error
+    [ -b "${CARD_DEVICE}${PART}2" ] || $error "Sorry, device ${CARD_DEVICE}${PART}2 is not valid block device.\nThat means that you probably haven't your card partitioned yet."
+    mkfs.ext2 "${CARD_DEVICE}${PART}2" || $error "There was during creating EXT2 filesystem, exiting..."
   fi
   return 0
 }
@@ -834,7 +857,6 @@ Steps to be done:
   RELEASE="`$get_choice "Select release to install" "$STRIPPED_LIST"`"
   if grep "$RELEASE" <<< "$NEEDS_PARTITION" > /dev/null; then
     do_repartition_wizard || return 1
-    ask_for_ext_mount
   fi
   TITLE="4.Download and install"
   # now I'll mount partitions I need
