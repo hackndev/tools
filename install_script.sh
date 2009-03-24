@@ -12,6 +12,13 @@ KED_T3_RELEASE="k106"
 KED_27x_RELEASE="k27x.07"
 RASTER_RELEASE="2008-11-13"
 
+# auryn files which I don't use
+#	- zImage & modules - both taken from other source
+#	- squashfs - I don't handle this filetype yet, maybe added in future
+#	- ext2.bz2 - I could handle this and have this loopback on card when I have kernel with initramfs/initrd which will mount it
+#		   - so add release first
+FILTER="(squashfs$|ext2.bz2$|^zImage|^modules)"
+
 DEVICE_LIST="TT Tungsten|T
 T3 Tungsten|T3
 T5 Tungsten|T5
@@ -564,6 +571,21 @@ pop_queue() {
   QUEUE="${QUEUE#* }"
 }
 
+handle_rootfs_image() {
+# $1	file to extract
+
+case "$1" in
+  *.tar.bz2)
+    $info "Extracting $1 into your card, please wait"
+    tar xjpf "$1" -C "$EXT2_MOUNT" || $error "An error occured during extraction.\nDo you have enough space on card?" ;;
+  *.tar.gz)
+    $info "Extracting $1 into your card"
+    tar xzpf "$1" -C "$EXT2_MOUNT" || $error "An error occured during extraction.\nDo you have enough space on card?" ;;
+  *)
+    $error "You have selected image which I can't handle.\nYour choice was:\n$1" ;;
+esac
+}
+
 auryn_images() {
   START="http://auryn.karlin.mff.cuni.cz/oe"
   QUEUE="stable testing latest"
@@ -591,12 +613,12 @@ auryn_images() {
   IMAGES="`for dir in $LINKS; do
     wget $dir -o /dev/null -O - | parse_links | grep -v '/$' | sed "s#^#$dir#"
   done`"
-  IMAGE_CHOICES="`echo "$IMAGES" | { i=1; while read image; do echo "$i $image"; i=$((i + 1)); done ; }`"
+  IMAGE_CHOICES="`echo "$IMAGES" | grep -vE "$FILTER" | { i=1; while read image; do echo "$i $image"; i=$((i + 1)); done ; }`"
   IMAGE="`$get_choice "Which image I should use?" "$IMAGE_CHOICES"`"
 }
 
 do_repartition_wizard() {
-  # repartitioning of card is needed for not "live" releases or loopback releases
+#   # repartitioning of card is needed for not "live" releases or loopback releases
   TITLE="3.Repartition, format of card"
   if is_true `$get_bool "Do you want to repartition your card?\n\nALL DATA ON CARD WILL BE LOST!"`; then
     # I need to know device only for partitioning
@@ -701,7 +723,7 @@ rast_T650_release() {
   lazy_download_to_temp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/sdcard-base.tar.gz"
   tar xzpf "/tmp/sdcard-base.tar.gz" -C "$FAT_MOUNT" --exclude="cocoboot.prc"
   lazy_download_to_temp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
-  tar xzpf "/tmp/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz" -C "$EXT2_MOUNT"
+  handle_rootfs_image "/tmp/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
   ask_and_add_temp_file "/tmp/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
   ask_and_add_temp_file "/tmp/sdcard-base.tar.gz"
 }
@@ -709,7 +731,7 @@ rast_T650_release() {
 # Alex's Debian Lenny release for Treo650
 deb_T650_release() {
   lazy_download_to_temp "http://releases.hackndev.com/debian-lenny-armel-20081004.rootfs.tar.bz2"
-  tar xjpf "/tmp/debian-lenny-armel-20081004.rootfs.tar.bz2" -C "$EXT2_MOUNT/"
+  handle_rootfs_image "/tmp/debian-lenny-armel-20081004.rootfs.tar.bz2"
   $download "http://releases.hackndev.com/palmt650-20081005/zImage" "$FAT_MOUNT/"
   cat << EOB > "$FAT_MOUNT/cocoboot.conf"
 cmdline = root=/dev/mmcblk0p2 rootdelay=1
@@ -747,7 +769,7 @@ ked_pxa_release() {
   tar xzpf /tmp/k27x.07.tar.gz k27x.07/toCard/ --strip-components=2 -C "$FAT_MOUNT" --exclude="cocoboot-svn1197.prc"
 }
 
-# kEdAR's release
+# kEdAR's release for T3
 ked_T3_release() {
   $download "http://kedar.palmlinux.cz/initrd.$KED_T3_RELEASE.gz" "$FAT_MOUNT/"
   $download "http://kedar.palmlinux.cz/zImage.$KED_T3_RELEASE.gz" "$FAT_MOUNT/"
@@ -768,8 +790,10 @@ sw_mis_T680_release() {
   $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/cocoboot.conf" "$FAT_MOUNT"
   $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/zImage.T680.sw$LAST_BUILD" "$FAT_MOUNT"
   auryn_images || return
+  lazy_download_to_temp "$IMAGE"
+  handle_rootfs_image "$IMAGE"
   lazy_download_to_temp "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/modules.T680.sw$LAST_BUILD.tar.bz2"
-  tar xjpf "/tmp/modules.T680.sw$LAST_BUILD.tar.bz2" -C "$EXT2_MOUNT"
+  handle_rootfs_image "/tmp/modules.T680.sw$LAST_BUILD.tar.bz2"
   ask_and_add_temp_file "/tmp/modules.T680.sw$LAST_BUILD.tar.bz2"
 }
 
