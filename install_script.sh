@@ -10,6 +10,7 @@ DIALOG_TIMEOUT=1
 
 KED_T3_RELEASE="k106"
 KED_27x_RELEASE="k27x.07"
+RASTER_RELEASE="2008-11-13"
 
 DEVICE_LIST="TT Tungsten|T
 T3 Tungsten|T3
@@ -28,19 +29,19 @@ GEN Generic"
 RELEASE_LIST="TT mx-TT Marex's release for Tungsten|T (outdated and MMC only)
 T3 ked-T3 kEdAR's release $KED_T3_RELEASE for Tungsten|T3
 T3 ked-sw-T3 Sleep_Walker's kernel with kEdAR's release for Tungsten|T3
-T5 m&s-T5 miska & snua12's release for Tungsten|T5
+T5 m-s-T5 miska & snua12's release for Tungsten|T5
 TX mis-TX miska's release for PalmTX
-Z71 mx-z71 Marex's OPIE release for Zire71
-Z72 z72ka z72ka's OPIE release for Zire72
-T650 rast-t650 raster's Illume image for Treo650
-T650 deb-t650 Alex's Debian Lenny (mainly for development) release for Treo650
+Z71 mx-Z71 Marex's OPIE release for Zire71
+Z72 z72ka-Z72 z72ka's OPIE release for Zire72
+T650 rast-T650 raster's Illume image for Treo650
+T650 deb-T650 Alex's Debian Lenny (mainly for development) release for Treo650
 T680 ked-sw-T680 Sleep_Walker's kernel with kEdAR's release for Treo680
 T680 sw-mis-T680 Sleep_Walker's kernel with miska's rootfs for Treo680
-LD mx-tp2 Marex's Technology Preview 2
+LD mx-tp2-LD Marex's Technology Preview 2
 GEN ked-pxa kEdAR's generic PXA27x release $KED_27x_RELEASE"
 
-NEEDS_PARTITION="mx-tt, sw-mis-T680, rast-t650, deb-t650"
-NOT_COCOBOOT="mx-tt"
+NEEDS_PARTITION="mx-TT, sw-mis-T680, rast-t650, deb-t650"
+NOT_COCOBOOT="mx-TT, mx-Z71"
 
 # if it is not special case, I want cocoboot!
 OMMIT_COCOBOOT="false"
@@ -635,12 +636,78 @@ do_repartition_wizard() {
 # download			wget with GUI, args are url_to_download and where_to, creates also folders if necessary
 # auryn_images			choose image on auryn.karlin.mff.cuni.cz and set IMAGE with user's choice
 
-ked_pxa_release() {
-  lazy_download_to_temp "http://kedar.palmlinux.cz/test/k27x/k27x.07.tar.gz"
-  tar xzpf /tmp/k27x.07.tar.gz k27x.07/toCard/ --strip-components=2 -C "$FAT_MOUNT"
+
+# miska's & snua12's release for T5
+m_s_T5_release() {
+  sleep 0
 }
 
-ked_t3_release() {
+# miska's release for TX
+mis_TX_release() {
+  sleep 0
+}
+
+# Marex's release for Z71
+mx_Z71_release() {
+  lazy_download_to_temp "http://marex.hackndev.com/PalmZ71-BootKit-v0.2-Binary.tar.bz2"
+  tar xjpf "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2" Z71Bootkit/part1-vfat -C "$FAT_MOUNT" --strip-components=2
+  tar xjpf "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2" Z71Bootkit/part1-ext2 -C "$EXT2_MOUNT" --strip-components=2
+  ask_and_add_temp_file "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2"
+}
+
+# raster's release for Treo650
+rast_T650_release() {
+  lazy_download_to_temp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE3/sdcard-base.tar.gz"
+  tar xzpf "/tmp/sdcard-base.tar.gz" -C "$FAT_MOUNT" --exclude="cocoboot.prc"
+  lazy_download_to_temp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
+  tar xzpf "/tmp/openmoko-illume-image-glibc-ipk--$RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz" -C "$EXT2_MOUNT"
+  ask_and_add_temp_file "/tmp/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
+  ask_and_add_temp_file "/tmp/sdcard-base.tar.gz"
+}
+
+# Alex's Debian Lenny release for Treo650
+deb_T650_release() {
+  lazy_download_to_temp "http://releases.hackndev.com/debian-lenny-armel-20081004.rootfs.tar.bz2"
+  tar xjpf "/tmp/debian-lenny-armel-20081004.rootfs.tar.bz2" -C "$EXT2_MOUNT/"
+  $download "http://releases.hackndev.com/palmt650-20081005/zImage" "$FAT_MOUNT/"
+  cat << EOB > "$FAT_MOUNT/cocoboot.conf"
+cmdline = root=/dev/mmcblk0p2 rootdelay=1
+kernel = /zImage
+EOB
+  ask_and_add_temp_file "/tmp/debian-lenny-armel-20081004.rootfs.tar.bz2"
+}
+
+# Marex's Technology Preview 2 for LifeDrive
+mx_tp2_LD_release() {
+  lazy_download_to_temp "http://releases.hackndev.com/TP2.tar.bz2"
+  # instead of using packed cocoboot I'll download new later instead
+  tar xjpf "/tmp/TP2.tar.bz2" -C "$FAT_MOUNT/" --exclude="cocoboot.prc"
+  ask_and_add_temp_file "/tmp/TP2.tar.bz2"
+}
+
+# kEdAR's release for T3 with Sleep_Walker's kernel
+ked_sw_T3_release() {
+  LAST_BUILD="`wget "http://sleepwalker.hackndev.com/release/T3/hnd-git/kEdAR/build" `"
+  $download "http://sleepwalker.hackndev.com/release/T3/hnd-git/kEdAR/$LAST_BUILD/zImage.T3.sw$LAST_BUILD" "$FAT_MOUNT/"
+  $download "http://sleepwalker.hackndev.com/release/T3/hnd-git/kEdAR/$LAST_BUILD/initrd.T3.sw$LAST_BUILD" "$FAT_MOUNT/"
+  $download "http://sleepwalker.hackndev.com/release/T3/hnd-git/kEdAR/$LAST_BUILD/modules-T3.sw$LAST_BUILD.squashfs" "$FAT_MOUNT/linux2ram/"
+  $download "http://kedar.palmlinux.cz/linux2ram/modlist-OpieMini0719.txt" "$FAT_MOUNT/linux2ram/"
+  $download "http://kedar.palmlinux.cz/linux2ram/rootfs-OpieMini20070719-xscale.squashfs" "$FAT_MOUNT/linux2ram/"
+  $download "http://kedar.palmlinux.cz/linux2ram/konqueror-embedded.squashfs" "$FAT_MOUNT/linux2ram/"
+  $download "http://kedar.palmlinux.cz/linux2ram/morefonts_opie.squashfs" "$FAT_MOUNT/linux2ram/"
+  $download "http://kedar.palmlinux.cz/linux2ram/dev_tt3.squashfs" "$FAT_MOUNT/linux2ram/"
+  $download "http://kedar.palmlinux.cz/linux2ram/kedar_changes.squashfs" "$FAT_MOUNT/linux2ram/"
+}
+
+# kEdAR's release for all PXA27x devices
+ked_pxa_release() {
+  lazy_download_to_temp "http://kedar.palmlinux.cz/test/k27x/k27x.07.tar.gz"
+  # instead of using packed cocoboot I'll download new later instead
+  tar xzpf /tmp/k27x.07.tar.gz k27x.07/toCard/ --strip-components=2 -C "$FAT_MOUNT" --exclude="cocoboot-svn1197.prc"
+}
+
+# kEdAR's release
+ked_T3_release() {
   $download "http://kedar.palmlinux.cz/initrd.$KED_T3_RELEASE.gz" "$FAT_MOUNT/"
   $download "http://kedar.palmlinux.cz/zImage.$KED_T3_RELEASE.gz" "$FAT_MOUNT/"
   $download "http://kedar.palmlinux.cz/cocoboot.conf" "$FAT_MOUNT/"
@@ -653,6 +720,7 @@ ked_t3_release() {
   $download "http://kedar.palmlinux.cz/linux2ram/kedar_changes.squashfs" "$FAT_MOUNT/linux2ram/"
 }
 
+# Sleep_Walker's kernel and miska's rootfs for Treo680
 sw_mis_T680_release() {
   LAST_BUILD="`wget http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/build -o /dev/null -O -`"
   $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/zImage.T680.sw$LAST_BUILD" "$FAT_MOUNT"
@@ -664,12 +732,15 @@ sw_mis_T680_release() {
   ask_and_add_temp_file "/tmp/modules.T680.sw$LAST_BUILD.tar.bz2"
 }
 
-z72ka_release() {
+# z72ka's release for Z72
+z72ka_Z72_release() {
   lazy_download_to_tmp "http://releases.hackndev.com/Angstrom-Opie-PalmZ72-v085.tar.bz2"
-  tar xjpf "/tmp/Angstrom-Opie-PalmZ72-v085.tar.bz2" -C "$FAT_MOUNT"
+  # I'd rather use up to date version of cocoboot
+  tar xjpf "/tmp/Angstrom-Opie-PalmZ72-v085.tar.bz2" -C "$FAT_MOUNT" --exclude="cocoboot.prc"
   ask_and_add_temp_file "/tmp/Angstrom-Opie-PalmZ72-v085.tar.bz2"
 }
 
+# Marex's (outdated) release for TT
 mx_tt_release() {
   lazy_download_to_tmp "http://marex.hackndev.com/PalmTT-BootKit-v0.2-Binary.tar.bz2"
   tar xjpf /tmp/PalmTT-BootKit-v0.2-Binary.tar.bz2 TTBootkit/part1-vfat --strip-components=2 -C "$FAT_MOUNT"
@@ -683,7 +754,7 @@ mx_tt_release() {
   if is_true `$get_bool "Should I delete downloaded file?"; then
     add_temp_file /tmp/PalmTT-BootKit-v0.2-Binary.tar.bz2
   fi
-  wait_info "For running this release please run Garux from your card on Palm.\nEnjoy!"
+  wait_info "For starting this release please run Garux from your card on Palm.\nEnjoy!"
 }
 
 #####################################################################################
