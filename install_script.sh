@@ -33,7 +33,7 @@ T5 m-s-T5 miska & snua12's release for Tungsten|T5
 TX mis-TX miska's release for PalmTX
 Z71 mx-Z71 Marex's OPIE release for Zire71
 Z72 z72ka-Z72 z72ka's OPIE release for Zire72
-T650 rast-T650 raster's Illume image for Treo650
+T650 rast-T650 raster's Illume image $RASTER_RELEASE for Treo650
 T650 deb-T650 Alex's Debian Lenny (mainly for development) release for Treo650
 T680 ked-sw-T680 Sleep_Walker's kernel with kEdAR's release for Treo680
 T680 sw-mis-T680 Sleep_Walker's kernel with miska's rootfs for Treo680
@@ -589,7 +589,7 @@ auryn_images() {
     wget $dir -o /dev/null -O - | parse_links | grep -v '/$' | sed "s#^#$dir#"
   done`"
   IMAGE_CHOICES="`echo "$IMAGES" | { i=1; while read image; do echo "$i $image"; i=$((i + 1)); done ; }`"
-  IMAGE="`$get_choice "Which image I should use?" "$IMAGE_CHOICES"
+  IMAGE="`$get_choice "Which image I should use?" "$IMAGE_CHOICES"`"
 }
 
 do_repartition_wizard() {
@@ -769,9 +769,6 @@ mx_tt_release() {
   tar xjpf /tmp/PalmTT-BootKit-v0.2-Binary.tar.bz2 TTBootkit/part2-ext2 --strip-components=2 -C "$EXT2_MOUNT"
   umount "$EXT2_MOUNT"
   ask_and_add_temp_file "PalmTT-BootKit-v0.2-Binary.tar.bz2"
-  if is_true `$get_bool "Should I delete downloaded file?"; then
-    add_temp_file /tmp/PalmTT-BootKit-v0.2-Binary.tar.bz2
-  fi
   wait_info "For starting this release please run Garux from your card on Palm.\nEnjoy!"
 }
 
@@ -864,25 +861,6 @@ clean_work() {
   CLEAN_WORK_DONE="true"
 }
 
-
-mess() {
-dialog --title "Step 2. selecting files" --infobox "Done." 5 30
-sleep 0.5
-dialog --title "Step 2. - Which files?" --msgbox "$LIST" 10 40
-
-MOUNTED="$(dialog --title 'Step 1. - where to copy files' --inputbox 'Where is mountpoint of your card/disk? (/media/disk)' 10 60 2>&1 >/dev/tty)"
-
-if [ ! -d "$MOUNTED/palm/Launcher" ]; then
-    mkdir "$MOUNTED/palm/Launcher"
-    if [ $? != 0 ]; then
-	error "Cannot create $MOUNTED/palm/Launcher"
-	clear
-	return
-    fi
-fi
-
-download "http://hackndev.com/trac/attachment/wiki/Bootpacks/cocoboot.prc" "$MOUNTED/palm/Launcher"
-}
 
 if [ "$0" != "/bin/bash" ] || [ "$0" != "bash" ]; then
   # I'm run, not sourced
