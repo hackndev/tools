@@ -639,12 +639,30 @@ do_repartition_wizard() {
 
 # miska's & snua12's release for T5
 m_s_T5_release() {
-  sleep 0
+  if is_true `$get_bool "Do you want to have kernel with 324x484 reslution?"`; then
+    HIRES="-hires"
+  else
+    unset HIRES
+  fi
+
+  $download "http://atrey.karlin.mff.cuni.cz/~miska/kernels/tt5$HIRES-kernel.tgz" "$FAT_MOUNT/"
+  lazy_download_to_temp "http://atrey.karlin.mff.cuni.cz/~miska/roots/opie-rootfs-expo-20080505-ext2.tgz"
+  tar xzf "/tmp/opie-rootfs-expo-20080505-ext2.tgz" -C "$FAT_MOUNT/"
+  ask_and_add_temp_file "/tmp/opie-rootfs-expo-20080505-ext2.tgz"
 }
 
 # miska's release for TX
 mis_TX_release() {
-  sleep 0
+  if is_true `$get_bool "Do you want to have kernel with 324x484 reslution?"`; then
+    HIRES="-hires"
+  else
+    unset HIRES
+  fi
+
+  $download "http://atrey.karlin.mff.cuni.cz/~miska/kernels/tx$HIRES-kernel.tgz" "$FAT_MOUNT/"
+  lazy_download_to_temp "http://atrey.karlin.mff.cuni.cz/~miska/roots/opie-rootfs-expo-20080505-ext2.tgz"
+  tar xzf "/tmp/opie-rootfs-expo-20080505-ext2.tgz" -C "$FAT_MOUNT/"
+  ask_and_add_temp_file "/tmp/opie-rootfs-expo-20080505-ext2.tgz"
 }
 
 # Marex's release for Z71
@@ -657,10 +675,10 @@ mx_Z71_release() {
 
 # raster's release for Treo650
 rast_T650_release() {
-  lazy_download_to_temp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE3/sdcard-base.tar.gz"
+  lazy_download_to_temp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/sdcard-base.tar.gz"
   tar xzpf "/tmp/sdcard-base.tar.gz" -C "$FAT_MOUNT" --exclude="cocoboot.prc"
   lazy_download_to_temp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
-  tar xzpf "/tmp/openmoko-illume-image-glibc-ipk--$RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz" -C "$EXT2_MOUNT"
+  tar xzpf "/tmp/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz" -C "$EXT2_MOUNT"
   ask_and_add_temp_file "/tmp/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
   ask_and_add_temp_file "/tmp/sdcard-base.tar.gz"
 }
