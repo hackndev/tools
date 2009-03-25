@@ -6,7 +6,7 @@
 
 # this is list of supported devices
 # first string on line is acronym of device used in release list
-DIALOG_TIMEOUT=2
+DIALOG_TIMEOUT=3
 
 KED_T3_RELEASE="k106"
 KED_27x_RELEASE="k27x.07"
@@ -79,7 +79,7 @@ online_update() {
   TITLE="Online update of this script"
   if is_true `$get_bool "Now I'll try to catch up-to-date configuration from Internet, this will be small ammount of data..."`; then
       # online update of functions
-      UPDATE="`wget http://sleepwalker.hackndev.com/install_script.sh -o /dev/null -O -`"
+      UPDATE="`wget 'http://git.hackndev.com/?p=tools;a=blob_plain;f=install_script.sh;hb=HEAD' -o /dev/null -O -`"
       source /dev/stdin <<< "$UPDATE"
   fi
 }
@@ -151,13 +151,15 @@ cons_download() {
   if [ "$2" != "${2%/}" ]; then
     # it has '/' at the end or it is existing directory
     TARGET="$2/${1##*/}"
-    [ -d "$2" ] || mkdir -p "$2" || error "Cannot create $2"
+    [ -d "$2" ] || mkdir -p "$2" || $error "Cannot create $2"
   elif [ -d "$2" ]; then
     # it's existing directory
     TARGET="$2/${1##*/}"
   else
     # $2 is file
     TARGET="$2"
+    # ensure that directory, where the target file will be exists
+    [ -d "${2%/*}" ] || mkdir -p "${2%/*}" || $error "Cannot create directory ${2%/*}"
   fi
 
   # download with output to dialog progress bar
@@ -228,6 +230,8 @@ kde_download() {
   else
     # $2 is file
     TARGET="$2"
+    # ensure that directory, where the target file will be exists
+    [ -d "${2%/*}" ] || mkdir -p "${2%/*}" || $error "Cannot create directory ${2%/*}"
   fi
 
 
@@ -338,6 +342,8 @@ gtk_download() {
   else
     # $2 is file
     TARGET="$2"
+    # ensure that directory, where the target file will be exists
+    [ -d "${2%/*}" ] || mkdir -p "${2%/*}" || $error "Cannot create directory ${2%/*}"
   fi
 
   # download with output to dialog progress bar
@@ -728,6 +734,7 @@ m_s_T5_release() {
 
   $download "http://atrey.karlin.mff.cuni.cz/~miska/kernels/tt5$HIRES-kernel.tgz" "$FAT_MOUNT/"
   lazy_download_to_tmp "http://atrey.karlin.mff.cuni.cz/~miska/roots/opie-rootfs-expo-20080505-ext2.tgz"
+  $info "Extracting files to card"
   tar xzf "/tmp/opie-rootfs-expo-20080505-ext2.tgz" -C "$FAT_MOUNT/"
   ask_and_add_temp_file "/tmp/opie-rootfs-expo-20080505-ext2.tgz"
 }
@@ -742,6 +749,7 @@ mis_TX_release() {
 
   $download "http://atrey.karlin.mff.cuni.cz/~miska/kernels/tx$HIRES-kernel.tgz" "$FAT_MOUNT/"
   lazy_download_to_tmp "http://atrey.karlin.mff.cuni.cz/~miska/roots/opie-rootfs-expo-20080505-ext2.tgz"
+  $info "Extracting files to card"
   tar xzf "/tmp/opie-rootfs-expo-20080505-ext2.tgz" -C "$FAT_MOUNT/"
   ask_and_add_temp_file "/tmp/opie-rootfs-expo-20080505-ext2.tgz"
 }
@@ -749,7 +757,9 @@ mis_TX_release() {
 # Marex's release for Z71
 mx_Z71_release() {
   lazy_download_to_tmp "http://marex.hackndev.com/PalmZ71-BootKit-v0.2-Binary.tar.bz2"
+  $info "Extracting files to FAT"
   tar xjpf "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2" Z71Bootkit/part1-vfat -C "$FAT_MOUNT" --strip-components=2
+  $info "Extracting files to EXT2"
   tar xjpf "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2" Z71Bootkit/part1-ext2 -C "$EXT2_MOUNT" --strip-components=2
   ask_and_add_temp_file "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2"
 }
@@ -757,6 +767,7 @@ mx_Z71_release() {
 # raster's release for Treo650
 rast_T650_release() {
   lazy_download_to_tmp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/sdcard-base.tar.gz"
+  $info "Extracting files to FAT"
   tar xzpf "/tmp/sdcard-base.tar.gz" -C "$FAT_MOUNT" --exclude="cocoboot.prc"
   lazy_download_to_tmp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
   handle_rootfs_image "/tmp/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
@@ -780,6 +791,7 @@ EOB
 mx_tp2_LD_release() {
   lazy_download_to_tmp "http://releases.hackndev.com/TP2.tar.bz2"
   # instead of using packed cocoboot I'll download new later instead
+  $info "Extracting files to card"
   tar xjpf "/tmp/TP2.tar.bz2" -C "$FAT_MOUNT/" --exclude="cocoboot.prc"
   ask_and_add_temp_file "/tmp/TP2.tar.bz2"
 }
@@ -802,6 +814,7 @@ ked_sw_T3_release() {
 ked_pxa_release() {
   lazy_download_to_tmp "http://kedar.palmlinux.cz/test/k27x/k27x.07.tar.gz"
   # instead of using packed cocoboot I'll download new later instead
+  $info "Extracting files to card"
   tar xzpf /tmp/k27x.07.tar.gz k27x.07/toCard/ --strip-components=2 -C "$FAT_MOUNT" --exclude="cocoboot-svn1197.prc"
 }
 
@@ -838,6 +851,7 @@ sw_mis_T680_release() {
 z72ka_Z72_release() {
   lazy_download_to_tmp "http://releases.hackndev.com/Angstrom-Opie-PalmZ72-v085.tar.bz2"
   # I'd rather use up to date version of cocoboot
+  $info "Extracting files into card"
   tar xjpf "/tmp/Angstrom-Opie-PalmZ72-v085.tar.bz2" -C "$FAT_MOUNT" --exclude="cocoboot.prc"
   ask_and_add_temp_file "/tmp/Angstrom-Opie-PalmZ72-v085.tar.bz2"
 }
@@ -845,13 +859,12 @@ z72ka_Z72_release() {
 # Marex's (outdated) release for TT
 mx_tt_release() {
   lazy_download_to_tmp "http://marex.hackndev.com/PalmTT-BootKit-v0.2-Binary.tar.bz2"
+  $info "Extracting files into FAT"
   tar xjpf /tmp/PalmTT-BootKit-v0.2-Binary.tar.bz2 TTBootkit/part1-vfat --strip-components=2 -C "$FAT_MOUNT"
   # I need clean filesystem for extracting this
   lazy_unmount "$EXT2_MOUNT"
-  mkfs.ext2 "${CARD_DEVICE}${PART}2"
-  mount -t ext2 "${CARD_DEVICE}${PART}2" "$EXT2_MOUNT"
+  $info "Extracting files into EXT2"
   tar xjpf /tmp/PalmTT-BootKit-v0.2-Binary.tar.bz2 TTBootkit/part2-ext2 --strip-components=2 -C "$EXT2_MOUNT"
-  umount "$EXT2_MOUNT"
   ask_and_add_temp_file "PalmTT-BootKit-v0.2-Binary.tar.bz2"
   wait_info "For starting this release please run Garux from your card on Palm.\nEnjoy!"
 }
@@ -892,13 +905,15 @@ do_release_preparations() {
     mkdir "$FAT_MOUNT"
     mkdir "$EXT2_MOUNT"
     RM_MOUNT_POINTS=true
+    $info "Saving and unmounting FAT"
     mount -t vfat "${CARD_DEVICE}${PART}1" "$FAT_MOUNT"
+    $info "Saving and unmounting EXT2"
     mount -t ext2 "${CARD_DEVICE}${PART}2" "$EXT2_MOUNT"
   fi
 }
 
 do_cocoboot() {
-  $download "http://hackndev.com/trac/attachment/wiki/Bootpacks/cocoboot.prc" "$FAT_MOUNT/palm/Launcher"
+  $download "http://hackndev.com/trac/raw-attachment/wiki/Bootpacks/cocoboot.prc" "$FAT_MOUNT/palm/Launcher/"
 }
 
 do_wizard() {
