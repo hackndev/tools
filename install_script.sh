@@ -6,7 +6,7 @@
 
 # this is list of supported devices
 # first string on line is acronym of device used in release list
-DIALOG_TIMEOUT=1
+DIALOG_TIMEOUT=2
 
 KED_T3_RELEASE="k106"
 KED_27x_RELEASE="k27x.07"
@@ -539,7 +539,7 @@ detect_card_device() {
     $error "I haven't found that device, sorry.\nTry to find it by yourself.\nCard device can be /dev/mmcblkX (for some card readers), /dev/sdX (for others).\nBe careful cause /dev/sdX also match your disk drive."
     return 1
   fi
-  if [ `echo "DETECTED_DEVICE" | wc -l` != 1 ]; then
+  if [ `echo "$DETECTED_DEVICE" | wc -l` != 1 ]; then
     $error "I found multiple devices, sorry"
     return 1
   fi
@@ -610,6 +610,11 @@ case "$1" in
   *)
     $error "You have selected image which I can't handle.\nYour choice was:\n$1" ;;
 esac
+}
+
+fix_root_passwd() {
+  # this function will set root password to 'toor'
+  sed -i '@^root:@s@^.*$@root:XOY7FA909Ez/w:0:0:root:/home/root:/bin/sh@' "$EXT2_MOUNT/etc/passwd"
 }
 
 auryn_images() {
@@ -824,6 +829,7 @@ sw_mis_T680_release() {
   handle_rootfs_image "/tmp/${IMAGE##*/}"
   lazy_download_to_tmp "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/modules.T680.sw$LAST_BUILD.tar.bz2"
   handle_rootfs_image "/tmp/modules.T680.sw$LAST_BUILD.tar.bz2"
+  fix_root_passwd
   ask_and_add_temp_file "/tmp/modules.T680.sw$LAST_BUILD.tar.bz2"
   ask_and_add_temp_file "/tmp/${IMAGE##*/}"
 }
@@ -856,7 +862,8 @@ mx_tt_release() {
 
 lazy_download_to_tmp() {
   BASENAME="${1##*/}"
-  [ -f "/tmp/$BASENAME" ] && get_bool "Previous download detected.\nShould I reuse it?" || $download "$1" -O "/tmp/$BASENAME"
+  [ -f "/tmp/$BASENAME" ] && is_true `get_bool "Previous download detected.\nShould I reuse it?"` && return
+  $download "$1" "/tmp/$BASENAME"
 }
 
 do_release_preparations() {
@@ -891,7 +898,7 @@ do_release_preparations() {
 }
 
 do_cocoboot() {
-  download "http://hackndev.com/trac/attachment/wiki/Bootpacks/cocoboot.prc" "$FAT_MOUNT/palm/Launcher"
+  $download "http://hackndev.com/trac/attachment/wiki/Bootpacks/cocoboot.prc" "$FAT_MOUNT/palm/Launcher"
 }
 
 do_wizard() {
@@ -923,7 +930,7 @@ Steps to be done:
   fi
   clean_work
   TITLE="Installation complete"
-  wait_info "Congratulations, installation is now complete.\nYou may remove your card now."
+  $wait_info "Congratulations, installation is now complete.\nYou may remove your card now."
 }
 
 clean_work() {
