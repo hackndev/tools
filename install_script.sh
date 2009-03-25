@@ -862,7 +862,7 @@ mx_tt_release() {
 
 lazy_download_to_tmp() {
   BASENAME="${1##*/}"
-  [ -f "/tmp/$BASENAME" ] && is_true `get_bool "Previous download detected.\nShould I reuse it?"` && return
+  [ -f "/tmp/$BASENAME" ] && is_true `$get_bool "Previous download detected.\nShould I reuse it?"` && return
   $download "$1" "/tmp/$BASENAME"
 }
 
