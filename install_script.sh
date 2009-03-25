@@ -17,7 +17,7 @@ RASTER_RELEASE="2008-11-13"
 #	- squashfs - I don't handle this filetype yet, maybe added in future
 #	- ext2.bz2 - I could handle this and have this loopback on card when I have kernel with initramfs/initrd which will mount it
 #		   - so add release first
-FILTER="(squashfs$|ext2.bz2$|^zImage|^modules)"
+FILTER="(squashfs$|ext2.bz2$|/zImage|/modules)"
 
 DEVICE_LIST="TT Tungsten|T
 T3 Tungsten|T3
@@ -30,8 +30,8 @@ LD LifeDrive
 GEN Generic"
 
 # this is list of supported releases
-#	first string says for which device it is
-#	second string says acronym of this release
+#	first string means what device it is for
+#	second string is acronym of this release
 #	rest of line is description
 RELEASE_LIST="TT mx-TT Marex's release for Tungsten|T (outdated and MMC only)
 T3 ked-T3 kEdAR's release $KED_T3_RELEASE for Tungsten|T3
@@ -103,9 +103,15 @@ ask_and_add_temp_file() {
 #####################################################################################
 
 cons_error() {
-  dialog --title "$1" --msgbox "Error occured: \n$@" 10 40
+  dialog --title "$TITLE" --msgbox "Error occured: \n$@" 10 40
+}
+
+cons_fatal_error() {
+  cons_error "$@"
+  clean_work
   exit 1
 }
+
 
 cons_info() {
   dialog --title "$TITLE" --infobox "$@" 10 40 
@@ -164,28 +170,34 @@ cons_download() {
 #####################################################################################
 
 kde_error() {
-  kdialog --title "$TITLE" --error "Error occured: \n$@"
+  kdialog --title "$TITLE" --error "Error occured: <br>${@//\\n/<br>}"
+  exit 1
+}
+
+kde_fatal_error() {
+  kde_error "$@"
+  clean_work
   exit 1
 }
 
 kde_info() {
-  ( kdialog --title "$TITLE" --passivepopup "$@" &
+  ( kdialog --title "$TITLE" --passivepopup "${@//\\n/<br>}" &
     sleep $DIALOG_TIMEOUT
     kill %1 ) &
 }
 
 kde_wait_info() {
-  kdialog --title "$TITLE" --msgbox "$@"
+  kdialog --title "$TITLE" --msgbox "${@//\\n/<br>}"
 }
 
 
 kde_get_bool() {
-  kdialog --title "$TITLE" --yesno "$@"
+  kdialog --title "$TITLE" --yesno "${@//\\n/<br>}"
   [ $? = 0 ] && echo "yes" || echo "no"
 }
 
 kde_get_string() {
-  kdialog --title "$TITLE" --inputbox "$@"
+  kdialog --title "$TITLE" --inputbox "${@//\\n/<br>}"
 }
 
 kde_get_choice() {
@@ -196,7 +208,7 @@ kde_get_choice() {
     CHOICES[$((I++))]="${line%% *}"
     CHOICES[$((I++))]="${line#* }"
   done <<< "$2"
-  kdialog --title "$TITLE" --menu "$1" "${CHOICES[@]}"
+  kdialog --title "$TITLE" --menu "${1//\\n/<br>}" "${CHOICES[@]}"
 }
 
 kde_download() {
@@ -251,7 +263,7 @@ kde_download() {
 	$setprogress $I
 	J="$I"
       fi      
-    done ) &
+    done ; $manualclose ) &
   pid="$!"
   while [ -d "/proc/$pid/" ]; do
     if [ "`$wascancelled`" = true ]; then
@@ -270,6 +282,11 @@ kde_download() {
 
 gtk_error() {
   zenity --title "$TITLE" --error --text="Error occured: \n$@"
+}
+
+gtk_fatal_error() {
+  gtk_error "$@"
+  clean_work
   exit 1
 }
 
@@ -357,6 +374,7 @@ detect_dialog() {
   
 
   error=${tmp}_error
+  fatal_error=${tmp}_fatal_error
   info=${tmp}_info
   wait_info=${tmp}_wait_info
   get_bool=${tmp}_get_bool
@@ -389,7 +407,7 @@ p
 
 +${FAT_SIZE}M
 t
-c
+b
 EOB
 }
 
@@ -436,7 +454,9 @@ finish() {
 
 
 get_card_size() {
-  CARD_SIZE="`LANG=en fdisk -l "$CARD_DEVICE" 2>/dev/null | grep "$CARD_DEVICE:.*bytes" | cut -f3 -d\ `"
+#  CARD_SIZE="`LANG=en fdisk -l "$CARD_DEVICE" 2>/dev/null | grep "$CARD_DEVICE:.*bytes" | cut -f3 -d\ `"
+  CARD_BYTE_SIZE="`LANG=en fdisk -l "$CARD_DEVICE" 2>/dev/null | grep "$CARD_DEVICE:.*bytes" | cut -f5 -d\ `"
+  CARD_SIZE="$((CARD_BYTE_SIZE / 1024 / 1024))"
 }
 
 
@@ -462,10 +482,10 @@ fdisk_repartition_card() {
   BAD=yes
   while is_true $BAD; do
     BAD=no
-    FAT_SIZE="`$get_string "What should be new size in MB of FAT partition?\nPlease, keep in mind that it is only partition PalmOS can work with."`"
+    FAT_SIZE="`$get_string "What should be new size in MB of FAT partition (capacity left - $CARD_SIZE Mb)?\nPlease, keep in mind that it is only partition PalmOS can work with."`"
     [ "$?" = 0 ] || return 1
     is_number "$FAT_SIZE" || { $error "Please entry only number." ; BAD=yes ; }
-    [ "$FAT_SIZE" -lt "$CARD_SIZE" ] || { error "You are attempting to create bigger FAT partition than is capacity of your card" ; BAD=yes ; }
+    [ "$FAT_SIZE" -lt "$CARD_SIZE" ] || { $error "You are attempting to create bigger FAT partition than is capacity of your card" ; BAD=yes ; }
   done
 
   EXT2_REST="`$get_bool "Should I use rest of card for EXT2 partition?"`"
@@ -474,29 +494,32 @@ fdisk_repartition_card() {
     BAD=yes
     while is_true $BAD; do
       BAD=no
-      EXT2_SIZE="`$get_string "What should be new size in MB of FAT partition?"`"
+      EXT2_SIZE="`$get_string "What should be new size in MB of EXT2 partition (capacity left - $((CARD_SIZE - FAT_SIZE)) Mb)?"`"
       [ "$?" = 0 ] || return 1
       is_number "$FAT_SIZE" || { $error "Please entry only number." ; BAD=yes ; }
-      [ "$EXT2_SIZE" -lt "$((CARD_SIZE - FAT_SIZE))" ] || { error "You are attempting to create bigger FAT partition than is capacity of your card" ; BAD=yes ; }
+      [ "$EXT2_SIZE" -lt "$((CARD_SIZE - FAT_SIZE))" ] || { $error "You are attempting to create bigger EXT2 partition than is free space on your card" ; BAD=yes ; }
     done
     
-    USE_SWAP="`$get_bool "Do you want swap?\nSwap is space, which is used to enlarge memory with disk or card.\nThis is recomended for devices with less RAM than 64 MB and it's useful in general."`"
+    USE_SWAP="`$get_bool "Do you want swap (capacity left - $((CARD_SIZE - FAT_SIZE - EXT2_SIZE)) Mb)?\nSwap is space, which is used to enlarge memory with disk or card.\nThis is recomended for devices with less RAM than 64 MB and it's useful in general."`"
   fi
+  $info "Ensuring that card is not mounted"
+  do_unmount_detected_device
   $info "Partitioning card..."
-  fdisk_compose_action | fdisk "$DEVICE" 2> /dev/null > /dev/null
+  fdisk_compose_action | fdisk "$CARD_DEVICE" 2> /dev/null > /dev/null || $error "fdisk execution failed"
   $info "Creating FAT filesystem..."
   unset PART
   if grep "mmcblk" <<< "$CARD_DEVICE" > /dev/null; then
     PART=p
   fi
-  mkfs.vfat "${DEVICE}${PART}1"
+  mkfs.vfat "${CARD_DEVICE}${PART}1" || $error "Creation of FAT filesystem failed!"
   $info "Creating EXT filesystem"
-  mkfs.ext2 "${DEVICE}${PART}2"
-  is_true "$USE_SWAP" && info "Creating swap..." && mkswap "${DEVICE}${PART}3"
+  mkfs.ext2 "${CARD_DEVICE}${PART}2" || $error "Creation of EXT2 filesystem failed!"
+  is_true "$USE_SWAP" && $info "Creating swap..." && mkswap "${CARD_DEVICE}${PART}3" || $error "Swap space creation failed!"
+  $wait_info "Partitions and filesystems are now successfuly created."
 }
 
 do_unmount_detected_device() {
-  grep -E "(`find /dev/disk -type l | xargs ls -l | grep -E "(${SHORT_CARD_DEVICE}${PART}1|${SHORT_CARD_DEVICE}${PART}2)$" | tr -s ' ' ' ' | cut -f8 -d\  | tr '\n' '|' | sed 's/|$//'`)" /etc/mtab | cut -f1 -d\  | xargs -i umount
+  grep -E "(`find /dev/disk -type l | xargs ls -l | grep -E "(${SHORT_CARD_DEVICE}${PART}[12])$" | tr -s ' ' ' ' | cut -f8 -d\  | tr '\n' '|' | sed 's/|$//'`|${CARD_DEVICE}${PART}[12])" /etc/mtab | cut -f1 -d\  | xargs -i umount {}
 }
 
 detect_card_device() {
@@ -516,7 +539,10 @@ detect_card_device() {
     $error "I haven't found that device, sorry.\nTry to find it by yourself.\nCard device can be /dev/mmcblkX (for some card readers), /dev/sdX (for others).\nBe careful cause /dev/sdX also match your disk drive."
     return 1
   fi
-  [ `echo "DETECTED_DEVICE" | wc -l` != 1 ] && $error "I found multiple devices, sorry" && return 1
+  if [ `echo "DETECTED_DEVICE" | wc -l` != 1 ]; then
+    $error "I found multiple devices, sorry"
+    return 1
+  fi
 
   if is_true `$get_bool "I found this device:\n$DETECTED_DEVICE\n\nDo you want to use it?"`; then
     LONG_CARD_DEVICE="$DETECTED_DEVICE"
@@ -614,7 +640,8 @@ auryn_images() {
     wget $dir -o /dev/null -O - | parse_links | grep -v '/$' | sed "s#^#$dir#"
   done`"
   IMAGE_CHOICES="`echo "$IMAGES" | grep -vE "$FILTER" | { i=1; while read image; do echo "$i $image"; i=$((i + 1)); done ; }`"
-  IMAGE="`$get_choice "Which image I should use?" "$IMAGE_CHOICES"`"
+  IMAGE_NUM="`$get_choice "Which image I should use?" "$IMAGE_CHOICES"`"
+  IMAGE="`grep -vE "$FILTER" <<< "$IMAGES" | sed -n ${IMAGE_NUM}p`"
 }
 
 do_repartition_wizard() {
@@ -641,7 +668,7 @@ do_repartition_wizard() {
     SHORT_CARD_DEVICE="`LANG=en ls -l $LONG_CARD_DEVICE | sed 's#.*/##'`"
     CARD_DEVICE="/dev/$SHORT_CARD_DEVICE"
     [ -b "$CARD_DEVICE" ] || script_error
-
+    do_unmount_detected_device
     fdisk_repartition_card
   elif is_true `$get_bool "Would you like at least recreate new EXT2 filesystem\nYou probably want at least this option when you already have EXT2 partition."`; then
     #to be done
@@ -662,8 +689,12 @@ do_repartition_wizard() {
     SHORT_CARD_DEVICE="`LANG=en ls -l $LONG_CARD_DEVICE | sed 's#.*/##'`"
     CARD_DEVICE="/dev/$SHORT_CARD_DEVICE"
     [ -b "$CARD_DEVICE" ] || script_error
-    [ -b "${CARD_DEVICE}${PART}2" ] || $error "Sorry, device ${CARD_DEVICE}${PART}2 is not valid block device.\nThat means that you probably haven't your card partitioned yet."
-    mkfs.ext2 "${CARD_DEVICE}${PART}2" || $error "There was during creating EXT2 filesystem, exiting..."
+    if grep "mmcblk" <<< "$CARD_DEVICE" > /dev/null; then
+      PART=p
+    fi
+    [ -b "${CARD_DEVICE}${PART}2" ] || $fatal_error "Sorry, device ${CARD_DEVICE}${PART}2 is not valid block device.\nThat means that you probably haven't your card partitioned yet."
+    do_unmount_detected_device
+    mkfs.ext2 "${CARD_DEVICE}${PART}2" || $fatal_error "There was during creating EXT2 filesystem, exiting..."
   fi
   return 0
 }
@@ -677,7 +708,7 @@ do_repartition_wizard() {
 #	EXT2 is newly created filesystem and mounted
 #	release name transformed tr '-' '_' to be a function name
 # ask_and_add_temp_file		will cause question about removal downloaded file
-# lazy_download_to_temp		will first check if it is not already downloaded, ask for reuse and download
+# lazy_download_to_tmp		will first check if it is not already downloaded, ask for reuse and download
 # download			wget with GUI, args are url_to_download and where_to, creates also folders if necessary
 # auryn_images			choose image on auryn.karlin.mff.cuni.cz and set IMAGE with user's choice
 
@@ -691,7 +722,7 @@ m_s_T5_release() {
   fi
 
   $download "http://atrey.karlin.mff.cuni.cz/~miska/kernels/tt5$HIRES-kernel.tgz" "$FAT_MOUNT/"
-  lazy_download_to_temp "http://atrey.karlin.mff.cuni.cz/~miska/roots/opie-rootfs-expo-20080505-ext2.tgz"
+  lazy_download_to_tmp "http://atrey.karlin.mff.cuni.cz/~miska/roots/opie-rootfs-expo-20080505-ext2.tgz"
   tar xzf "/tmp/opie-rootfs-expo-20080505-ext2.tgz" -C "$FAT_MOUNT/"
   ask_and_add_temp_file "/tmp/opie-rootfs-expo-20080505-ext2.tgz"
 }
@@ -705,14 +736,14 @@ mis_TX_release() {
   fi
 
   $download "http://atrey.karlin.mff.cuni.cz/~miska/kernels/tx$HIRES-kernel.tgz" "$FAT_MOUNT/"
-  lazy_download_to_temp "http://atrey.karlin.mff.cuni.cz/~miska/roots/opie-rootfs-expo-20080505-ext2.tgz"
+  lazy_download_to_tmp "http://atrey.karlin.mff.cuni.cz/~miska/roots/opie-rootfs-expo-20080505-ext2.tgz"
   tar xzf "/tmp/opie-rootfs-expo-20080505-ext2.tgz" -C "$FAT_MOUNT/"
   ask_and_add_temp_file "/tmp/opie-rootfs-expo-20080505-ext2.tgz"
 }
 
 # Marex's release for Z71
 mx_Z71_release() {
-  lazy_download_to_temp "http://marex.hackndev.com/PalmZ71-BootKit-v0.2-Binary.tar.bz2"
+  lazy_download_to_tmp "http://marex.hackndev.com/PalmZ71-BootKit-v0.2-Binary.tar.bz2"
   tar xjpf "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2" Z71Bootkit/part1-vfat -C "$FAT_MOUNT" --strip-components=2
   tar xjpf "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2" Z71Bootkit/part1-ext2 -C "$EXT2_MOUNT" --strip-components=2
   ask_and_add_temp_file "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2"
@@ -720,9 +751,9 @@ mx_Z71_release() {
 
 # raster's release for Treo650
 rast_T650_release() {
-  lazy_download_to_temp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/sdcard-base.tar.gz"
+  lazy_download_to_tmp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/sdcard-base.tar.gz"
   tar xzpf "/tmp/sdcard-base.tar.gz" -C "$FAT_MOUNT" --exclude="cocoboot.prc"
-  lazy_download_to_temp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
+  lazy_download_to_tmp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
   handle_rootfs_image "/tmp/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
   ask_and_add_temp_file "/tmp/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
   ask_and_add_temp_file "/tmp/sdcard-base.tar.gz"
@@ -730,7 +761,7 @@ rast_T650_release() {
 
 # Alex's Debian Lenny release for Treo650
 deb_T650_release() {
-  lazy_download_to_temp "http://releases.hackndev.com/debian-lenny-armel-20081004.rootfs.tar.bz2"
+  lazy_download_to_tmp "http://releases.hackndev.com/debian-lenny-armel-20081004.rootfs.tar.bz2"
   handle_rootfs_image "/tmp/debian-lenny-armel-20081004.rootfs.tar.bz2"
   $download "http://releases.hackndev.com/palmt650-20081005/zImage" "$FAT_MOUNT/"
   cat << EOB > "$FAT_MOUNT/cocoboot.conf"
@@ -742,7 +773,7 @@ EOB
 
 # Marex's Technology Preview 2 for LifeDrive
 mx_tp2_LD_release() {
-  lazy_download_to_temp "http://releases.hackndev.com/TP2.tar.bz2"
+  lazy_download_to_tmp "http://releases.hackndev.com/TP2.tar.bz2"
   # instead of using packed cocoboot I'll download new later instead
   tar xjpf "/tmp/TP2.tar.bz2" -C "$FAT_MOUNT/" --exclude="cocoboot.prc"
   ask_and_add_temp_file "/tmp/TP2.tar.bz2"
@@ -764,7 +795,7 @@ ked_sw_T3_release() {
 
 # kEdAR's release for all PXA27x devices
 ked_pxa_release() {
-  lazy_download_to_temp "http://kedar.palmlinux.cz/test/k27x/k27x.07.tar.gz"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/test/k27x/k27x.07.tar.gz"
   # instead of using packed cocoboot I'll download new later instead
   tar xzpf /tmp/k27x.07.tar.gz k27x.07/toCard/ --strip-components=2 -C "$FAT_MOUNT" --exclude="cocoboot-svn1197.prc"
 }
@@ -788,13 +819,13 @@ sw_mis_T680_release() {
   LAST_BUILD="`wget http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/build -o /dev/null -O -`"
   $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/zImage.T680.sw$LAST_BUILD" "$FAT_MOUNT"
   $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/cocoboot.conf" "$FAT_MOUNT"
-  $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/zImage.T680.sw$LAST_BUILD" "$FAT_MOUNT"
   auryn_images || return
-  lazy_download_to_temp "$IMAGE"
-  handle_rootfs_image "$IMAGE"
-  lazy_download_to_temp "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/modules.T680.sw$LAST_BUILD.tar.bz2"
+  lazy_download_to_tmp "$IMAGE"
+  handle_rootfs_image "/tmp/${IMAGE##*/}"
+  lazy_download_to_tmp "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/modules.T680.sw$LAST_BUILD.tar.bz2"
   handle_rootfs_image "/tmp/modules.T680.sw$LAST_BUILD.tar.bz2"
   ask_and_add_temp_file "/tmp/modules.T680.sw$LAST_BUILD.tar.bz2"
+  ask_and_add_temp_file "/tmp/${IMAGE##*/}"
 }
 
 # z72ka's release for Z72
@@ -825,7 +856,7 @@ mx_tt_release() {
 
 lazy_download_to_tmp() {
   BASENAME="${1##*/}"
-  [ -f "/tmp/$BASENAME" ] && get_bool "Previous download detected.\nShould I reuse it?" || wget "$1" -O "/tmp/$BASENAME"
+  [ -f "/tmp/$BASENAME" ] && get_bool "Previous download detected.\nShould I reuse it?" || $download "$1" -O "/tmp/$BASENAME"
 }
 
 do_release_preparations() {
@@ -908,11 +939,13 @@ clean_work() {
 }
 
 
-if [ "$0" != "/bin/bash" ] || [ "$0" != "bash" ]; then
+if [ "$0" != "/bin/bash" ] && [ "$0" != "bash" ]; then
   # I'm run, not sourced
   detect_dialog
   only_root_pass
   do_wizard
   clean_work
+else
+  echo "Sourcing..."
 fi
 
