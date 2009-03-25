@@ -460,7 +460,6 @@ finish() {
 
 
 get_card_size() {
-#  CARD_SIZE="`LANG=en fdisk -l "$CARD_DEVICE" 2>/dev/null | grep "$CARD_DEVICE:.*bytes" | cut -f3 -d\ `"
   CARD_BYTE_SIZE="`LANG=en fdisk -l "$CARD_DEVICE" 2>/dev/null | grep "$CARD_DEVICE:.*bytes" | cut -f5 -d\ `"
   CARD_SIZE="$((CARD_BYTE_SIZE / 1024 / 1024))"
 }
@@ -524,10 +523,6 @@ fdisk_repartition_card() {
   $wait_info "Partitions and filesystems are now successfuly created."
 }
 
-do_unmount_detected_device() {
-  grep -E "(`find /dev/disk -type l | xargs ls -l | grep -E "(${SHORT_CARD_DEVICE}${PART}[12])$" | tr -s ' ' ' ' | cut -f8 -d\  | tr '\n' '|' | sed 's/|$//'`|${CARD_DEVICE}${PART}[12])" /etc/mtab | cut -f1 -d\  | xargs -i umount {}
-}
-
 detect_card_device() {
   TITLE="Card device detection"
   $wait_info "Let's find try to find card device to work with!\nI'll check for changes in /dev/disk/by-id/ which is handled by udev.\nNow please remove your card from card reader.\n\nPress OK when ready"
@@ -559,6 +554,10 @@ detect_card_device() {
 ########################## mount handling functions #################################
 #####################################################################################
 
+do_unmount_detected_device() {
+  # $ALL_CARD_DEVICES is initialized by selected_device_check(), which should be run before
+  grep -E "$ALL_CARD_DEVICES" /etc/mtab | cut -f1 -d\  | xargs -i umount {}
+}
 
 ask_for_fat_mount() {
   FAT_MOUNT="`$get_string "Where is card FAT partition mounted to?"`"
@@ -655,6 +654,25 @@ auryn_images() {
   IMAGE="`grep -vE "$FILTER" <<< "$IMAGES" | sed -n ${IMAGE_NUM}p`"
 }
 
+selected_device_check() {
+  # here I'm testing if detected device is not some mounted disk like /usr, /var, /, /boot etc
+  ALL_CARD_DEVICES="(`find /dev/disk -type l | xargs ls -l | grep -E "(${SHORT_CARD_DEVICE}${PART}[12])$" | tr -s ' ' ' ' | cut -f8 -d\  | tr '\n' '|' | sed 's/|$//'`|${CARD_DEVICE}${PART}[12])"
+
+  if {
+    # first I'll check if it is not mounted to some system directory
+    mount | sed 's/\([^ ]*\) on/\1/'
+    # now let's have a look on /etc/fstab - device can be used for system, but is not mounted now
+    cat /etc/fstab | tr -s '[:blank:]' ' '
+    } | grep -E "$ALL_CARD_DEVICES" | cut -d\  -f2 | grep -E "^(/|/boot|/usr|/var|/home|/bin|/etc|/lib|/lib64|/opt|/srv)$" > /dev/null; then
+      $fatal_error "The device you selected seems to be used for your system, not for card!\nPlease, take your time and find that device instead of trying to lose your data."
+  fi
+
+  # let's check LVM now
+  if which pvdisplay > /dev/null && pvdisplay | sed -n '/PV Name/s#.*\(/dev/.*\)$#\1#p' | grep -E "$ALL_CARD_DEVICES" > /dev/null; then
+    $fatal_error "The device you selected seems to be used for LVM, not for card!\nPlease, take your time and find that device instead of trying to lose your data."
+  fi
+}
+
 do_repartition_wizard() {
 #   # repartitioning of card is needed for not "live" releases or loopback releases
   TITLE="3.Repartition, format of card"
@@ -679,6 +697,8 @@ do_repartition_wizard() {
     SHORT_CARD_DEVICE="`LANG=en ls -l $LONG_CARD_DEVICE | sed 's#.*/##'`"
     CARD_DEVICE="/dev/$SHORT_CARD_DEVICE"
     [ -b "$CARD_DEVICE" ] || script_error
+    # sanity check here
+    selected_device_check
     do_unmount_detected_device
     fdisk_repartition_card
   elif is_true `$get_bool "Would you like at least recreate new EXT2 filesystem\nYou probably want at least this option when you already have EXT2 partition."`; then
@@ -703,6 +723,8 @@ do_repartition_wizard() {
     if grep "mmcblk" <<< "$CARD_DEVICE" > /dev/null; then
       PART=p
     fi
+    # sanity check here
+    selected_device_check
     [ -b "${CARD_DEVICE}${PART}2" ] || $fatal_error "Sorry, device ${CARD_DEVICE}${PART}2 is not valid block device.\nThat means that you probably haven't your card partitioned yet."
     do_unmount_detected_device
     mkfs.ext2 "${CARD_DEVICE}${PART}2" || $fatal_error "There was during creating EXT2 filesystem, exiting..."
