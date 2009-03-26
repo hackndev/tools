@@ -7,6 +7,9 @@
 # this is list of supported devices
 # first string on line is acronym of device used in release list
 DIALOG_TIMEOUT=3
+# here you can say where are temporary files placed
+TMP_DIR="${TMP_DIR:-/tmp}"
+UNSQUASH_BIN="$TMP_DIR/unsquashfs"
 
 KED_T3_RELEASE="k106"
 KED_27x_RELEASE="k27x.07"
@@ -17,7 +20,7 @@ RASTER_RELEASE="2008-11-13"
 #	- squashfs - I don't handle this filetype yet, maybe added in future
 #	- ext2.bz2 - I could handle this and have this loopback on card when I have kernel with initramfs/initrd which will mount it
 #		   - so add release first
-FILTER="(squashfs$|ext2.bz2$|/zImage|/modules)"
+FILTER="(ext2.bz2$|/zImage|/modules)"
 
 DEVICE_LIST="TT Tungsten|T
 T3 Tungsten|T3
@@ -47,7 +50,7 @@ T680 sw-mis-T680 Sleep_Walker's kernel with miska's rootfs for Treo680
 LD mx-tp2-LD Marex's Technology Preview 2
 GEN ked-pxa kEdAR's generic PXA27x release $KED_27x_RELEASE"
 
-NEEDS_PARTITION="mx-TT, sw-mis-T680, rast-t650, deb-t650"
+NEEDS_PARTITION="mx-TT, ked-sw-T680, sw-mis-T680, rast-t650, deb-t650"
 NOT_COCOBOOT="mx-TT, mx-Z71"
 
 # if it is not special case, I want cocoboot!
@@ -93,8 +96,17 @@ add_temp_file() {
 }
 
 ask_and_add_temp_file() {
-  if is_true `$get_bool "Should I remove downloaded file $1"`; then
-    add_temp_file "$1"
+  if [ "$REMOVE_DOWNLOADED" ]; then
+    if is_true "$REMOVE_DOWNLOADED"; then
+      add_temp_file "$1"
+    fi
+  else
+    if is_true `$get_bool "Should I remove downloaded file $1"`; then
+      add_temp_file "$1"
+      REMOVE_DOWNLOADED=true
+    else
+      REMOVE_DOWNLOADED=false
+    fi
   fi
 }
 
@@ -378,7 +390,6 @@ detect_dialog() {
     echo "Cannot find working alternative. Both Kdialog and dialog weren't found. Please install and retry."
   fi
   
-
   error=${tmp}_error
   fatal_error=${tmp}_fatal_error
   info=${tmp}_info
@@ -392,9 +403,9 @@ detect_dialog() {
 script_error() {
   error "Congratulations, you found problem in script which cannot be handled. So - what now?
 1] feel like winner
-2] rerun this script invoking 'sh -x $0 2> /tmp/install_script.log'
+2] rerun this script invoking 'sh -x $0 2> $TMP_DIR/install_script.log'
 3] get to that problem by behaving same way as before
-4] send log to sleep_walker@hackndev.com with subject 'install_script.sh error' and attach file /tmp/install_script.log
+4] send log to sleep_walker@hackndev.com with subject 'install_script.sh error' and attach file $TMP_DIR/install_script.log
 
 Thank you!
 
@@ -519,7 +530,7 @@ fdisk_repartition_card() {
   mkfs.vfat "${CARD_DEVICE}${PART}1" || $error "Creation of FAT filesystem failed!"
   $info "Creating EXT filesystem"
   mkfs.ext2 "${CARD_DEVICE}${PART}2" || $error "Creation of EXT2 filesystem failed!"
-  is_true "$USE_SWAP" && $info "Creating swap..." && mkswap "${CARD_DEVICE}${PART}3" || $error "Swap space creation failed!"
+  is_true "$USE_SWAP" && $info "Creating swap..." && { mkswap "${CARD_DEVICE}${PART}3" || $error "Swap space creation failed!" ; }
   $wait_info "Partitions and filesystems are now successfuly created."
 }
 
@@ -612,6 +623,10 @@ case "$1" in
   *.tar.gz)
     $info "Extracting $1 into your card"
     tar xzpf "$1" -C "$EXT2_MOUNT" || $error "An error occured during extraction.\nDo you have enough space on card?" ;;
+  *.squashfs)
+    [ -x "$UNSQUASH_BIN" ] || $download "http://sleepwalker.hackndev.com/squash-bins/unsquashfs" "$UNSQUASH_BIN" && chmod +x "$UNSQUASH_BIN"
+    $info "Extracting $1 into your card"
+    "$UNSQUASH_BIN" -f -dest "$EXT2_MOUNT" "$1" ;;
   *)
     $error "You have selected image which I can't handle.\nYour choice was:\n$1" ;;
 esac
@@ -656,7 +671,7 @@ auryn_images() {
 
 selected_device_check() {
   # here I'm testing if detected device is not some mounted disk like /usr, /var, /, /boot etc
-  ALL_CARD_DEVICES="(`find /dev/disk -type l | xargs ls -l | grep -E "(${SHORT_CARD_DEVICE}${PART}[12])$" | tr -s ' ' ' ' | cut -f8 -d\  | tr '\n' '|' | sed 's/|$//'`|${CARD_DEVICE}${PART}[12])"
+  ALL_CARD_DEVICES="(`find /dev/disk -type l | xargs ls -l | grep -E "${SHORT_CARD_DEVICE}${PART}[12]$" | tr -s ' ' ' ' | cut -f8 -d\  | tr '\n' '|'`${CARD_DEVICE}${PART}[12])"
 
   if {
     # first I'll check if it is not mounted to some system directory
@@ -668,7 +683,7 @@ selected_device_check() {
   fi
 
   # let's check LVM now
-  if which pvdisplay > /dev/null && pvdisplay | sed -n '/PV Name/s#.*\(/dev/.*\)$#\1#p' | grep -E "$ALL_CARD_DEVICES" > /dev/null; then
+  if which pvdisplay > /dev/null && pvdisplay 2> /dev/null | sed -n '/PV Name/s#.*\(/dev/.*\)$#\1#p' | grep -E "$ALL_CARD_DEVICES" > /dev/null; then
     $fatal_error "The device you selected seems to be used for LVM, not for card!\nPlease, take your time and find that device instead of trying to lose your data."
   fi
 }
@@ -680,7 +695,7 @@ do_repartition_wizard() {
     # I need to know device only for partitioning
     # but for that I need to be sure! ;D
 
-    if is_true `$get_bool "Do you know, which device in /dev filesystem represents your card?"`; then
+    if is_true `$get_bool "Do you know, which device in /dev filesystem represents your card?\nIt depends on the way how it is connected.\nOn notebooks it is commonly used /dev/mmcblk0,\nexternal USB card readers will use something like /dev/sdX."`; then
       LONG_CARD_DEVICE="`$get_string "Which device is your SD/MMC card?"`"
       [ -b "$LONG_CARD_DEVICE" ] || { $error "Sorry, the device you entered doesn't exist." ; return 1 ;}
     else
@@ -703,7 +718,7 @@ do_repartition_wizard() {
     fdisk_repartition_card
   elif is_true `$get_bool "Would you like at least recreate new EXT2 filesystem\nYou probably want at least this option when you already have EXT2 partition."`; then
     #to be done
-    if is_true `$get_bool "Do you know, which device in /dev filesystem represents your card?"`; then
+    if is_true `$get_bool "Do you know, which device in /dev filesystem represents your card?\nIt depends on the way how it is connected.\nOn notebooks it is commonly used /dev/mmcblk0,\nexternal USB card readers will use something like /dev/sdX."`; then
       LONG_CARD_DEVICE="`$get_string "Which device is your SD/MMC card?"`"
       [ -b "$LONG_CARD_DEVICE" ] || { $error "Sorry, the device you entered doesn't exist." ; return 1 ;}
     else
@@ -757,8 +772,8 @@ m_s_T5_release() {
   $download "http://atrey.karlin.mff.cuni.cz/~miska/kernels/tt5$HIRES-kernel.tgz" "$FAT_MOUNT/"
   lazy_download_to_tmp "http://atrey.karlin.mff.cuni.cz/~miska/roots/opie-rootfs-expo-20080505-ext2.tgz"
   $info "Extracting files to card"
-  tar xzf "/tmp/opie-rootfs-expo-20080505-ext2.tgz" -C "$FAT_MOUNT/"
-  ask_and_add_temp_file "/tmp/opie-rootfs-expo-20080505-ext2.tgz"
+  tar xzf "$TMP_DIR/opie-rootfs-expo-20080505-ext2.tgz" -C "$FAT_MOUNT/"
+  ask_and_add_temp_file "$TMP_DIR/opie-rootfs-expo-20080505-ext2.tgz"
 }
 
 # miska's release for TX
@@ -772,55 +787,55 @@ mis_TX_release() {
   $download "http://atrey.karlin.mff.cuni.cz/~miska/kernels/tx$HIRES-kernel.tgz" "$FAT_MOUNT/"
   lazy_download_to_tmp "http://atrey.karlin.mff.cuni.cz/~miska/roots/opie-rootfs-expo-20080505-ext2.tgz"
   $info "Extracting files to card"
-  tar xzf "/tmp/opie-rootfs-expo-20080505-ext2.tgz" -C "$FAT_MOUNT/"
-  ask_and_add_temp_file "/tmp/opie-rootfs-expo-20080505-ext2.tgz"
+  tar xzf "$TMP_DIR/opie-rootfs-expo-20080505-ext2.tgz" -C "$FAT_MOUNT/"
+  ask_and_add_temp_file "$TMP_DIR/opie-rootfs-expo-20080505-ext2.tgz"
 }
 
 # Marex's release for Z71
 mx_Z71_release() {
-  lazy_download_to_tmp "http://marex.hackndev.com/PalmZ71-BootKit-v0.2-Binary.tar.bz2"
+  lazy_download_release_to_tmp "http://marex.hackndev.com/PalmZ71-BootKit-v0.2-Binary.tar.bz2"
   $info "Extracting files to FAT"
-  tar xjpf "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2" Z71Bootkit/part1-vfat -C "$FAT_MOUNT" --strip-components=2
+  tar xjpf "$TMP_DIR/$RELEASE/PalmZ71-BootKit-v0.2-Binary.tar.bz2" Z71Bootkit/part1-vfat -C "$FAT_MOUNT" --strip-components=2
   $info "Extracting files to EXT2"
-  tar xjpf "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2" Z71Bootkit/part1-ext2 -C "$EXT2_MOUNT" --strip-components=2
-  ask_and_add_temp_file "/tmp/PalmZ71-BootKit-v0.2-Binary.tar.bz2"
+  tar xjpf "$TMP_DIR/$RELEASE/PalmZ71-BootKit-v0.2-Binary.tar.bz2" Z71Bootkit/part1-ext2 -C "$EXT2_MOUNT" --strip-components=2
+  ask_and_add_temp_file "$TMP_DIR/$RELEASE/PalmZ71-BootKit-v0.2-Binary.tar.bz2"
 }
 
 # raster's release for Treo650
 rast_T650_release() {
-  lazy_download_to_tmp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/sdcard-base.tar.gz"
+  lazy_download_release_to_tmp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/sdcard-base.tar.gz"
   $info "Extracting files to FAT"
-  tar xzpf "/tmp/sdcard-base.tar.gz" -C "$FAT_MOUNT" --exclude="cocoboot.prc"
+  tar xzpf "$TMP_DIR/$RELEASE/sdcard-base.tar.gz" -C "$FAT_MOUNT" --exclude="cocoboot.prc"
   lazy_download_to_tmp "http://download.enlightenment.org/misc/Illume/Treo-650/$RASTER_RELEASE/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
-  handle_rootfs_image "/tmp/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
-  ask_and_add_temp_file "/tmp/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
-  ask_and_add_temp_file "/tmp/sdcard-base.tar.gz"
+  handle_rootfs_image "$TMP_DIR/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
+  ask_and_add_temp_file "$TMP_DIR/openmoko-illume-image-glibc-ipk--${RASTER_RELEASE//-/}-palmt650.rootfs.tar.gz"
+  ask_and_add_temp_file "$TMP_DIR/$RELEASE/sdcard-base.tar.gz"
 }
 
 # Alex's Debian Lenny release for Treo650
 deb_T650_release() {
   lazy_download_to_tmp "http://releases.hackndev.com/debian-lenny-armel-20081004.rootfs.tar.bz2"
-  handle_rootfs_image "/tmp/debian-lenny-armel-20081004.rootfs.tar.bz2"
+  handle_rootfs_image "$TMP_DIR/debian-lenny-armel-20081004.rootfs.tar.bz2"
   $download "http://releases.hackndev.com/palmt650-20081005/zImage" "$FAT_MOUNT/"
   cat << EOB > "$FAT_MOUNT/cocoboot.conf"
 cmdline = root=/dev/mmcblk0p2 rootdelay=1
 kernel = /zImage
 EOB
-  ask_and_add_temp_file "/tmp/debian-lenny-armel-20081004.rootfs.tar.bz2"
+  ask_and_add_temp_file "$TMP_DIR/debian-lenny-armel-20081004.rootfs.tar.bz2"
 }
 
 # Marex's Technology Preview 2 for LifeDrive
 mx_tp2_LD_release() {
-  lazy_download_to_tmp "http://releases.hackndev.com/TP2.tar.bz2"
+  lazy_download_release_to_tmp "http://releases.hackndev.com/TP2.tar.bz2"
   # instead of using packed cocoboot I'll download new later instead
   $info "Extracting files to card"
-  tar xjpf "/tmp/TP2.tar.bz2" -C "$FAT_MOUNT/" --exclude="cocoboot.prc"
-  ask_and_add_temp_file "/tmp/TP2.tar.bz2"
+  tar xjpf "$TMP_DIR/$RELEASE/TP2.tar.bz2" -C "$FAT_MOUNT/" --exclude="cocoboot.prc"
+  ask_and_add_temp_file "$TMP_DIR/$RELEASE/TP2.tar.bz2"
 }
 
 # kEdAR's release for T3 with Sleep_Walker's kernel
 ked_sw_T3_release() {
-  LAST_BUILD="`wget "http://sleepwalker.hackndev.com/release/T3/hnd-git/kEdAR/build" `"
+  LAST_BUILD="`wget "http://sleepwalker.hackndev.com/release/T3/hnd-git/kEdAR/build" -o /dev/null -O -`"
   $download "http://sleepwalker.hackndev.com/release/T3/hnd-git/kEdAR/$LAST_BUILD/zImage.T3.sw$LAST_BUILD" "$FAT_MOUNT/"
   $download "http://sleepwalker.hackndev.com/release/T3/hnd-git/kEdAR/$LAST_BUILD/initrd.T3.sw$LAST_BUILD" "$FAT_MOUNT/"
   $download "http://sleepwalker.hackndev.com/release/T3/hnd-git/kEdAR/$LAST_BUILD/modules-T3.sw$LAST_BUILD.squashfs" "$FAT_MOUNT/linux2ram/"
@@ -834,10 +849,10 @@ ked_sw_T3_release() {
 
 # kEdAR's release for all PXA27x devices
 ked_pxa_release() {
-  lazy_download_to_tmp "http://kedar.palmlinux.cz/test/k27x/k27x.07.tar.gz"
+  lazy_download_release_to_tmp "http://kedar.palmlinux.cz/test/k27x/k27x.07.tar.gz"
   # instead of using packed cocoboot I'll download new later instead
   $info "Extracting files to card"
-  tar xzpf /tmp/k27x.07.tar.gz k27x.07/toCard/ --strip-components=2 -C "$FAT_MOUNT" --exclude="cocoboot-svn1197.prc"
+  tar xzpf "$TMP_DIR/$RELEASE/k27x.07.tar.gz" k27x.07/toCard/ --strip-components=2 -C "$FAT_MOUNT" --exclude="cocoboot-svn1197.prc"
 }
 
 # kEdAR's release for T3
@@ -861,33 +876,55 @@ sw_mis_T680_release() {
   $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/cocoboot.conf" "$FAT_MOUNT"
   auryn_images || return
   lazy_download_to_tmp "$IMAGE"
-  handle_rootfs_image "/tmp/${IMAGE##*/}"
-  lazy_download_to_tmp "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/modules.T680.sw$LAST_BUILD.tar.bz2"
-  handle_rootfs_image "/tmp/modules.T680.sw$LAST_BUILD.tar.bz2"
+  handle_rootfs_image "$TMP_DIR/${IMAGE##*/}"
+  lazy_download_release_to_tmp "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/modules.T680.sw$LAST_BUILD.tar.bz2"
+  handle_rootfs_image "$TMP_DIR/$RELEASE/modules.T680.sw$LAST_BUILD.tar.bz2"
   fix_root_passwd
-  ask_and_add_temp_file "/tmp/modules.T680.sw$LAST_BUILD.tar.bz2"
-  ask_and_add_temp_file "/tmp/${IMAGE##*/}"
+  ask_and_add_temp_file "$TMP_DIR/$RELEASE/modules.T680.sw$LAST_BUILD.tar.bz2"
+  ask_and_add_temp_file "$TMP_DIR/${IMAGE##*/}"
+}
+
+# Sleep_Walker's kernel and kEdAR's rootfs with his changes
+ked_sw_T680_release() {
+  $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/zImage.T680.sw$LAST_BUILD" "$FAT_MOUNT"
+  $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/cocoboot.conf" "$FAT_MOUNT"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/rootfs-OpieMini20070719-xscale.squashfs"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/konqueror-embedded.squashfs"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/morefonts_opie.squashfs"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/dev_tt3.squashfs"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/kedar_changes.squashfs"
+  handle_rootfs_image "$TMP_DIR/rootfs-OpieMini20070719-xscale.squashfs"
+  handle_rootfs_image "$TMP_DIR/konqueror-embedded.squashfs"
+  handle_rootfs_image "$TMP_DIR/morefonts_opie.squashfs"
+  handle_rootfs_image "$TMP_DIR/dev_tt3.squashfs"
+  handle_rootfs_image "$TMP_DIR/kedar_changes.squashfs"
+  ask_and_add_temp_file "$TMP_DIR/rootfs-OpieMini20070719-xscale.squashfs"
+  ask_and_add_temp_file "$TMP_DIR/konqueror-embedded.squashfs"
+  ask_and_add_temp_file "$TMP_DIR/morefonts_opie.squashfs"
+  ask_and_add_temp_file "$TMP_DIR/dev_tt3.squashfs"
+  ask_and_add_temp_file "$TMP_DIR/kedar_changes.squashfs"
+  
 }
 
 # z72ka's release for Z72
 z72ka_Z72_release() {
-  lazy_download_to_tmp "http://releases.hackndev.com/Angstrom-Opie-PalmZ72-v085.tar.bz2"
+  lazy_download_release_to_tmp "http://releases.hackndev.com/Angstrom-Opie-PalmZ72-v085.tar.bz2"
   # I'd rather use up to date version of cocoboot
   $info "Extracting files into card"
-  tar xjpf "/tmp/Angstrom-Opie-PalmZ72-v085.tar.bz2" -C "$FAT_MOUNT" --exclude="cocoboot.prc"
-  ask_and_add_temp_file "/tmp/Angstrom-Opie-PalmZ72-v085.tar.bz2"
+  tar xjpf "$TMP_DIR/$RELEASE/Angstrom-Opie-PalmZ72-v085.tar.bz2" -C "$FAT_MOUNT" --exclude="cocoboot.prc"
+  ask_and_add_temp_file "$TMP_DIR/$RELEASE/Angstrom-Opie-PalmZ72-v085.tar.bz2"
 }
 
 # Marex's (outdated) release for TT
 mx_tt_release() {
-  lazy_download_to_tmp "http://marex.hackndev.com/PalmTT-BootKit-v0.2-Binary.tar.bz2"
+  lazy_download_release_to_tmp "http://marex.hackndev.com/PalmTT-BootKit-v0.2-Binary.tar.bz2"
   $info "Extracting files into FAT"
-  tar xjpf /tmp/PalmTT-BootKit-v0.2-Binary.tar.bz2 TTBootkit/part1-vfat --strip-components=2 -C "$FAT_MOUNT"
+  tar xjpf "$TMP_DIR/$RELEASE/PalmTT-BootKit-v0.2-Binary.tar.bz2" TTBootkit/part1-vfat --strip-components=2 -C "$FAT_MOUNT"
   # I need clean filesystem for extracting this
   lazy_unmount "$EXT2_MOUNT"
   $info "Extracting files into EXT2"
-  tar xjpf /tmp/PalmTT-BootKit-v0.2-Binary.tar.bz2 TTBootkit/part2-ext2 --strip-components=2 -C "$EXT2_MOUNT"
-  ask_and_add_temp_file "PalmTT-BootKit-v0.2-Binary.tar.bz2"
+  tar xjpf "$TMP_DIR/$RELEASE/PalmTT-BootKit-v0.2-Binary.tar.bz2" TTBootkit/part2-ext2 --strip-components=2 -C "$EXT2_MOUNT"
+  ask_and_add_temp_file "$TMP_DIR/$RELEASE/PalmTT-BootKit-v0.2-Binary.tar.bz2"
   wait_info "For starting this release please run Garux from your card on Palm.\nEnjoy!"
 }
 
@@ -897,9 +934,34 @@ mx_tt_release() {
 
 lazy_download_to_tmp() {
   BASENAME="${1##*/}"
-  [ -f "/tmp/$BASENAME" ] && is_true `$get_bool "Previous download detected.\nShould I reuse it?"` && return
-  $download "$1" "/tmp/$BASENAME"
+  if [ -f "$TMP_DIR/$BASENAME" ]; then
+    if [ "$REUSE" ]; then
+      if is_true "$REUSE"; then
+	return
+      fi
+    elif is_true `$get_bool "Previous download of $BASENAME detected.\nShould I reuse it?"`; then
+	REUSE="true"
+	return
+    fi
+  fi
+  $download "$1" "$TMP_DIR/$BASENAME"
 }
+
+lazy_download_release_to_tmp() {
+  BASENAME="${1##*/}"
+  if [ -f "$TMP_DIR/$RELEASE/$BASENAME" ]; then
+    if [ "$REUSE" ]; then
+      if is_true "$REUSE"; then
+	return
+      fi
+    elif is_true `$get_bool "Previous download of $BASENAME detected.\nShould I reuse it?"`; then
+	REUSE="true"
+	return
+    fi
+  fi
+  $download "$1" "$TMP_DIR/$RELEASE/$BASENAME"
+}
+
 
 do_release_preparations() {
   if is_true `$get_bool "Do you know where are mount points for FAT (and if needed also EXT) partitions?\nYou can have it set in /etc/fstab or you can have it handled by HAL."`; then
