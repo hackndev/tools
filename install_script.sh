@@ -4,6 +4,8 @@
 # questions in hackndev.com forum or on IRC #hackndev @ irc.freenode.net
 # GPL v2
 
+VERSION="0.2"
+BACKTITLE="BFU installer v$VERSION"
 # this is list of supported devices
 # first string on line is acronym of device used in release list
 DIALOG_TIMEOUT=3
@@ -39,8 +41,10 @@ GEN Generic"
 RELEASE_LIST="TT mx-TT Marex's release for Tungsten|T (outdated and MMC only)
 T3 ked-T3 kEdAR's release $KED_T3_RELEASE for Tungsten|T3
 T3 ked-sw-T3 Sleep_Walker's kernel with kEdAR's release for Tungsten|T3
+T3 sw-mis-T3 Sleep_Walker's kernel with miska's rootfs for T3
 T5 m-s-T5 miska & snua12's release for Tungsten|T5
 TX mis-TX miska's release for PalmTX
+TX sw-mis-TX Sleep_Walker's kernel with miska's rootfs for TX
 Z71 mx-Z71 Marex's OPIE release for Zire71
 Z72 z72ka-Z72 z72ka's OPIE release for Zire72
 T650 rast-T650 raster's Illume image $RASTER_RELEASE for Treo650
@@ -48,9 +52,11 @@ T650 deb-T650 Alex's Debian Lenny (mainly for development) release for Treo650
 T680 ked-sw-T680 Sleep_Walker's kernel with kEdAR's release for Treo680
 T680 sw-mis-T680 Sleep_Walker's kernel with miska's rootfs for Treo680
 LD mx-tp2-LD Marex's Technology Preview 2
-GEN ked-pxa kEdAR's generic PXA27x release $KED_27x_RELEASE"
+LD sw-mis-LD Sleep_Walker's kernel with miska's rootfs for LifeDrive (not ready yet)
+GEN ked-pxa kEdAR's generic PXA27x release $KED_27x_RELEASE
+GEN sw-mis-PXA27x Sleep_Walker's kernel with miska's rootfs for generic device (not ready yet)"
 
-NEEDS_PARTITION="mx-TT, ked-sw-T680, sw-mis-T680, rast-t650, deb-t650"
+NEEDS_PARTITION="mx-TT, ked-sw-T680, sw-mis-T680, sw-mis-TX, sw-mis-LD, sw-mis-PXA27x, rast-T650, deb-t650"
 NOT_COCOBOOT="mx-TT, mx-Z71"
 
 # if it is not special case, I want cocoboot!
@@ -115,7 +121,7 @@ ask_and_add_temp_file() {
 #####################################################################################
 
 cons_error() {
-  dialog --title "$TITLE" --msgbox "Error occured: \n$@" 10 40
+  dialog --backtitle "$BACKTITLE" --title "$TITLE" --msgbox "Error occured: \n$@" 0 0
 }
 
 cons_fatal_error() {
@@ -126,24 +132,30 @@ cons_fatal_error() {
 
 
 cons_info() {
-  dialog --title "$TITLE" --infobox "$@" 10 40 
+  dialog --title "$TITLE" --infobox "$@" 0 0
 }
 
 cons_wait_info() {
-  dialog --title "$TITLE" --msgbox "$@" 10 40 
+  dialog --backtitle "$BACKTITLE" --title "$TITLE" --msgbox "$@" 0 0
 }
 
 
 cons_get_bool() {
-  dialog --title "$TITLE" --yesno "$@" 10 40 2>&1 > /dev/tty
+  dialog --backtitle "$BACKTITLE" --title "$TITLE" --yesno "$@" 0 0 2>&1 > /dev/tty
   [ $? = 0 ] && echo "yes" || echo "no"
 }
 
 cons_get_string() {
-  dialog --title "$TITLE" --inputbox "$@" 10 60 2>&1 > /dev/tty
+  dialog --backtitle "$BACKTITLE" --title "$TITLE" --inputbox "$@" 0 0 2>&1 > /dev/tty
+  if [ "$?" != 0 ]; then
+    echo "Installation interrupted ($?)."
+    exit 255
+  fi
 }
 
 cons_get_choice() {
+  # let's read terminal resolution
+  eval `stty -a | head -n 1 | tr ';' '\n' | sed -n '/rows/s/rows /rows=/p;/columns/s/columns /columns=/p'`
   # read choices into array
   unset CHOICES
   I=0
@@ -151,7 +163,11 @@ cons_get_choice() {
     CHOICES[$((I++))]="${line%% *}"
     CHOICES[$((I++))]="${line#* }"
   done <<< "$2"
-  dialog --title "$TITLE" --menu "$1" 20 60 "$((I / 2))" "${CHOICES[@]}" 2>&1 > /dev/tty
+  dialog --backtitle "$BACKTITLE" --title "$TITLE" --menu "$1" "$rows" "$columns" "$((I / 2))" "${CHOICES[@]}" 2>&1 > /dev/tty
+  if [ "$?" != 0 ]; then
+    echo "Installation interrupted ($?)."
+    exit 255
+  fi
 }
 
 cons_download() {
@@ -175,7 +191,7 @@ cons_download() {
   fi
 
   # download with output to dialog progress bar
-  wget "$1" -O "$TARGET" -o /dev/stdout | sed -n 's/.* \([[:digit:]]\+\)% .*/\1/p' | dialog --gauge "Downloading:\n$1\ninto\n$2" 10 40 0
+  wget "$1" -O "$TARGET" -o /dev/stdout | sed -n 's/.* \([[:digit:]]\+\)% .*/\1/p' | dialog --gauge "Downloading:\n$1\ninto\n$2" 0 0 0
 }
 
 
@@ -212,6 +228,10 @@ kde_get_bool() {
 
 kde_get_string() {
   kdialog --title "$TITLE" --inputbox "${@//\\n/<br>}"
+  if [ "$?" != 0 ]; then
+    echo "Installation interrupted ($?)."
+    exit 255
+  fi
 }
 
 kde_get_choice() {
@@ -223,6 +243,10 @@ kde_get_choice() {
     CHOICES[$((I++))]="${line#* }"
   done <<< "$2"
   kdialog --title "$TITLE" --menu "${1//\\n/<br>}" "${CHOICES[@]}"
+  if [ "$?" != 0 ]; then
+    echo "Installation interrupted ($?)."
+    exit 255
+  fi
 }
 
 kde_download() {
@@ -260,9 +284,9 @@ kde_download() {
   else
     # KDE3 kdialog and dcop control
     # cut beginning
-    KDIALOG="${KDIALOG//DCOPRef(/}"
+    KDIALOG="${KDIALOG//DCOPRef\(/}"
     # cut end
-    KDIALOG="${KDIALOG//,ProgressDialog)/}"
+    KDIALOG="${KDIALOG//,ProgressDialog\)/}"
     autoclose="dcop $KDIALOG ProgressDialog setAutoClose true"
     setprogress="dcop $KDIALOG ProgressDialog setProgress"
     showcancel="dcop $KDIALOG ProgressDialog showCancelButton true"
@@ -286,6 +310,10 @@ kde_download() {
       kill $pid
       kill `ps aux | grep "wget $1 -O $TARGET -o /dev/stdout" | grep -v grep | tr -s ' ' ' ' | cut -f2 -d\  `
       $manualclose
+      if [ "$?" != 0 ]; then
+	echo "Installation interrupted."
+	exit 255
+      fi
     fi
     sleep 1
   done
@@ -322,6 +350,10 @@ gtk_get_bool() {
 
 gtk_get_string() {
   zenity --title "$TITLE" --entry --text="$@"
+  if [ "$?" != 0 ]; then
+    echo "Installation interrupted."
+    exit 255
+  fi
 }
 
 gtk_get_choice() {
@@ -334,6 +366,10 @@ gtk_get_choice() {
   done <<< "$2"
   CHOICES[0]="TRUE"
   CHOICE="`zenity --title "$TITLE" --list --text="$1" --column=" " --column="Choice" --radiolist "${CHOICES[@]}"`"
+  if [ "$?" != 0 ]; then
+    echo "Installation interrupted."
+    exit 255
+  fi
   grep "$CHOICE" <<< "$2" | cut -f1 -d\ 
 }
 
@@ -521,15 +557,15 @@ fdisk_repartition_card() {
   $info "Ensuring that card is not mounted"
   do_unmount_detected_device
   $info "Partitioning card..."
-  fdisk_compose_action | fdisk "$CARD_DEVICE" 2> /dev/null > /dev/null || $error "fdisk execution failed"
+  fdisk_compose_action | fdisk "$CARD_DEVICE" 2> /dev/null > /dev/null || $fatal_error "fdisk execution failed"
   $info "Creating FAT filesystem..."
   unset PART
   if grep "mmcblk" <<< "$CARD_DEVICE" > /dev/null; then
     PART=p
   fi
-  mkfs.vfat "${CARD_DEVICE}${PART}1" || $error "Creation of FAT filesystem failed!"
+  mkfs.vfat "${CARD_DEVICE}${PART}1" || $fatal_error "Creation of FAT filesystem failed!"
   $info "Creating EXT filesystem"
-  mkfs.ext2 "${CARD_DEVICE}${PART}2" || $error "Creation of EXT2 filesystem failed!"
+  mkfs.ext2 "${CARD_DEVICE}${PART}2" || $fatal_error "Creation of EXT2 filesystem failed!"
   is_true "$USE_SWAP" && $info "Creating swap..." && { mkswap "${CARD_DEVICE}${PART}3" || $error "Swap space creation failed!" ; }
   $wait_info "Partitions and filesystems are now successfuly created."
 }
@@ -558,6 +594,8 @@ detect_card_device() {
 
   if is_true `$get_bool "I found this device:\n$DETECTED_DEVICE\n\nDo you want to use it?"`; then
     LONG_CARD_DEVICE="$DETECTED_DEVICE"
+  else
+    $fatal_error "I need to know the card device.\n\nExiting..."
   fi
 }
 
@@ -590,6 +628,7 @@ lazy_unmount() {
     # it is not mounted
     return
   fi
+  $info "Flushing cache and unmounting $1"
   umount "$1"
 }
 
@@ -634,7 +673,7 @@ esac
 
 fix_root_passwd() {
   # this function will set root password to 'toor'
-  sed -i '@^root:@s@^.*$@root:XOY7FA909Ez/w:0:0:root:/home/root:/bin/sh@' "$EXT2_MOUNT/etc/passwd"
+  sed -i '/^root:/s@^.*$@root:XOY7FA909Ez/w:0:0:root:/home/root:/bin/sh@' "$EXT2_MOUNT/etc/passwd"
 }
 
 auryn_images() {
@@ -664,7 +703,7 @@ auryn_images() {
   IMAGES="`for dir in $LINKS; do
     wget $dir -o /dev/null -O - | parse_links | grep -v '/$' | sed "s#^#$dir#"
   done`"
-  IMAGE_CHOICES="`echo "$IMAGES" | grep -vE "$FILTER" | { i=1; while read image; do echo "$i $image"; i=$((i + 1)); done ; }`"
+  IMAGE_CHOICES="`echo "$IMAGES" | grep -vE "$FILTER" | { i=1; while read image; do echo "$i ${image}"; i=$((i + 1)); done ; }`"
   IMAGE_NUM="`$get_choice "Which image I should use?" "$IMAGE_CHOICES"`"
   IMAGE="`grep -vE "$FILTER" <<< "$IMAGES" | sed -n ${IMAGE_NUM}p`"
 }
@@ -691,11 +730,11 @@ selected_device_check() {
 do_repartition_wizard() {
 #   # repartitioning of card is needed for not "live" releases or loopback releases
   TITLE="3.Repartition, format of card"
-  if is_true `$get_bool "Do you want to repartition your card?\n\nALL DATA ON CARD WILL BE LOST!"`; then
+  if is_true `$get_bool "Do you want to repartition your card?\nIt is useful when you don't have EXT2 partition yet. You selected release, which use EXT2 partition.\n\nALL DATA ON CARD WILL BE LOST!"`; then
     # I need to know device only for partitioning
     # but for that I need to be sure! ;D
 
-    if is_true `$get_bool "Do you know, which device in /dev filesystem represents your card?\nIt depends on the way how it is connected.\nOn notebooks it is commonly used /dev/mmcblk0,\nexternal USB card readers will use something like /dev/sdX."`; then
+    if is_true `$get_bool "Do you know, which device in /dev filesystem represents your card?\n\nIt depends on the way how it is connected.\nOn notebooks it is commonly used /dev/mmcblk0,\nexternal USB card readers will use something like /dev/sdX."`; then
       LONG_CARD_DEVICE="`$get_string "Which device is your SD/MMC card?"`"
       [ -b "$LONG_CARD_DEVICE" ] || { $error "Sorry, the device you entered doesn't exist." ; return 1 ;}
     else
@@ -716,9 +755,9 @@ do_repartition_wizard() {
     selected_device_check
     do_unmount_detected_device
     fdisk_repartition_card
-  elif is_true `$get_bool "Would you like at least recreate new EXT2 filesystem\nYou probably want at least this option when you already have EXT2 partition."`; then
+  elif is_true `$get_bool "Would you like at least recreate new EXT2 filesystem\n\nYou probably want at least this option. If you already have your card partitioned, you can just recreate EXT2 filesystem to don't mix two root file system from releases.\n\nAnd of course, this will ERASE all your data on EXT2 partition."`; then
     #to be done
-    if is_true `$get_bool "Do you know, which device in /dev filesystem represents your card?\nIt depends on the way how it is connected.\nOn notebooks it is commonly used /dev/mmcblk0,\nexternal USB card readers will use something like /dev/sdX."`; then
+    if is_true `$get_bool "Do you know, which device in /dev filesystem represents your card?\n\nIt depends on the way how it is connected.\nOn notebooks it is commonly used /dev/mmcblk0,\nexternal USB card readers will use something like /dev/sdX."`; then
       LONG_CARD_DEVICE="`$get_string "Which device is your SD/MMC card?"`"
       [ -b "$LONG_CARD_DEVICE" ] || { $error "Sorry, the device you entered doesn't exist." ; return 1 ;}
     else
@@ -746,6 +785,33 @@ do_repartition_wizard() {
   fi
   return 0
 }
+#####################################################################################
+############################ OPIE related functions #################################
+#####################################################################################
+
+opie_network() {
+  if is_true `$get_bool "Should be ethernet over USB set as default USB gadget mode?"`; then
+    sed -i '/USB_MODE/s/^.*$/USB_MODE="networking"/' "$EXT2_MOUNT/etc/default/usb-gadget"
+  fi
+  IP_ADDRESS="`$get_string "Set IP address of Palm"`"
+  IP_NETMASK="`$get_string "Set address mask of Palm"`"
+  IP_GATEWAY="`$get_string "Set gateway address for Palm (address you set on your PC for usb0 interface)"`"
+  # main editation
+  # find interface usb0 related lines
+  if ! grep 'auto.*usb0' "$EXT2_MOUNT/etc/network/interfaces" > /dev/null; then
+    sed -i "/auto/s/$/ usb0/" "$EXT2_MOUNT/etc/network/interfaces"
+  fi
+  LINE_START="`cat -n /mnt/karta2/etc/network/interfaces | grep iface[[:blank:]]*usb0 | tr -s '[:blank:]' ' ' | cut -f2 -d\ `"
+  while read num; do
+    if [ $num -gt $LINE_START ]; then
+      LINE_END="$num"
+      break
+    fi
+  done <<< "`cat -n /mnt/karta2/etc/network/interfaces | grep '^[[:blank:]]*[[:digit:]]\+[[:blank:]]*$'`"
+  # change lines according to entered settings
+  sed -i "${LINE_START},${LINE_END}s/address .*/address $IP_ADDRESS/;${LINE_START},${LINE_END}s/netmask .*/netmask $IP_NETMASK/;${LINE_START},${LINE_END}s/address .*/gateway $IP_GATEWAY/" "$EXT2_MOUNT/etc/network/interfaces"
+}
+
 
 #####################################################################################
 ############################ main release functions #################################
@@ -872,15 +938,15 @@ ked_T3_release() {
 # Sleep_Walker's kernel and miska's rootfs for Treo680
 sw_mis_T680_release() {
   LAST_BUILD="`wget http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/build -o /dev/null -O -`"
-  $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/zImage.T680.sw$LAST_BUILD" "$FAT_MOUNT"
+  $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/zImage.$DEVICE.sw$LAST_BUILD" "$FAT_MOUNT"
   $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/cocoboot.conf" "$FAT_MOUNT"
   auryn_images || return
   lazy_download_to_tmp "$IMAGE"
   handle_rootfs_image "$TMP_DIR/${IMAGE##*/}"
-  lazy_download_release_to_tmp "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/modules.T680.sw$LAST_BUILD.tar.bz2"
-  handle_rootfs_image "$TMP_DIR/$RELEASE/modules.T680.sw$LAST_BUILD.tar.bz2"
+  lazy_download_release_to_tmp "http://sleepwalker.hackndev.com/release/$DEVICE/linux-2.6-arm/partition/$LAST_BUILD/modules.$DEVICE.sw$LAST_BUILD.tar.bz2"
+  handle_rootfs_image "$TMP_DIR/$RELEASE/modules.$DEVICE.sw$LAST_BUILD.tar.bz2"
   fix_root_passwd
-  ask_and_add_temp_file "$TMP_DIR/$RELEASE/modules.T680.sw$LAST_BUILD.tar.bz2"
+  ask_and_add_temp_file "$TMP_DIR/$RELEASE/modules.$DEVICE.sw$LAST_BUILD.tar.bz2"
   ask_and_add_temp_file "$TMP_DIR/${IMAGE##*/}"
 }
 
@@ -969,8 +1035,10 @@ do_release_preparations() {
     if grep "$RELEASE" <<< "$NEEDS_PARTITION" > /dev/null; then
       ask_for_ext_mount
     fi
-    mount "$FAT_MOUNT"
-    mount "$EXT2_MOUNT"
+    mount "$FAT_MOUNT" || $fatal_error "Mounting FAT failed.\n\nExiting..."
+    FAT_MOUNTED=yes
+    mount "$EXT2_MOUNT" || $fatal_error "Mounting EXT2 failed.\n\nExiting..."
+    EXT2_MOUNTED=yes
   else
   #probably in /media
     if [ -z "$CARD_DEVICE" ]; then
@@ -982,17 +1050,23 @@ do_release_preparations() {
       PART=p
     fi
     do_unmount_detected_device
-    umount "${CARD_DEVICE}${PART}1"
-    umount "${CARD_DEVICE}${PART}2"
+#    umount "${CARD_DEVICE}${PART}1"
+#    umount "${CARD_DEVICE}${PART}2"
     FAT_MOUNT="/mnt/FAT.$$"
     EXT2_MOUNT="/mnt/EXT2.$$"
     mkdir "$FAT_MOUNT"
     mkdir "$EXT2_MOUNT"
     RM_MOUNT_POINTS=true
     $info "Saving and unmounting FAT"
-    mount -t vfat "${CARD_DEVICE}${PART}1" "$FAT_MOUNT"
+    mount -t vfat "${CARD_DEVICE}${PART}1" "$FAT_MOUNT" || $fatal_error "Mounting FAT failed.\n\nExiting..."
+    FAT_MOUNTED=yes
+    [ -d "$FAT_MOUNT"/palm/Launcher ] || mkdir -p "$FAT_MOUNT"/palm/Launcher
     $info "Saving and unmounting EXT2"
-    mount -t ext2 "${CARD_DEVICE}${PART}2" "$EXT2_MOUNT"
+    mount -t ext2 "${CARD_DEVICE}${PART}2" "$EXT2_MOUNT" || $fatal_error "Mounting EXT2 failed.\n\nExiting..."
+    EXT2_MOUNTED=yes
+  fi
+  if [ "$FAT_SKELETON" ]; then
+    cp -r "$FAT_SKELETON" "$FAT_MOUNT"
   fi
 }
 
@@ -1013,20 +1087,27 @@ Steps to be done:
 "
   TITLE="1.Device selection"
   DEVICE="`$get_choice "Select your device" "$DEVICE_LIST"`"
+  # if it was cancelled, just exit
+  [ "$?" != 0 ] && exit 255
   TITLE="2.Release selection"
   STRIPPED_LIST="`sed -n "/^$DEVICE/s/^$DEVICE //p" <<< "$RELEASE_LIST"`"
+  [ "$?" != 0 ] && exit 255
   RELEASE="`$get_choice "Select release to install" "$STRIPPED_LIST"`"
+  [ "$?" != 0 ] && exit 255
   if grep "$RELEASE" <<< "$NEEDS_PARTITION" > /dev/null; then
     do_repartition_wizard || return 1
   fi
   TITLE="4.Download and install"
   # now I'll mount partitions I need
   do_release_preparations
+  # call release handling function
   "${RELEASE//-/_}_release"
+  # install cocoboot if needed
   TITLE="5.Cocoboot"
   if ! grep "$RELEASE" <<< "$NOT_COCOBOOT" > /dev/null || is_true "$OMMIT_COCOBOOT"; then
     do_cocoboot
   fi
+  # clean up work
   clean_work
   TITLE="Installation complete"
   $wait_info "Congratulations, installation is now complete.\nYou may remove your card now."
@@ -1035,8 +1116,8 @@ Steps to be done:
 clean_work() {
   # run cleaning task only once
   is_true $CLEAN_WORK_DONE && return 0
-  lazy_unmount "$FAT_MOUNT"
-  lazy_unmount "$EXT2_MOUNT"
+  is_true "$FAT_MOUNTED" && lazy_unmount "$FAT_MOUNT"
+  is_true "$EXT2_MOUNTED" && lazy_unmount "$EXT2_MOUNT"
   is_true "$RM_MOUNT_POINTS" && rmdir "$FAT_MOUNT" "$EXT2_MOUNT"
   if [ "$TEMP_COUNT" ]; then
     rm "${TEMP_FILES[@]}"
@@ -1044,11 +1125,17 @@ clean_work() {
   CLEAN_WORK_DONE="true"
 }
 
+emergency_exit() {
+  clean_work
+  exit 255
+}
 
 if [ "$0" != "/bin/bash" ] && [ "$0" != "bash" ]; then
   # I'm run, not sourced
   detect_dialog
   only_root_pass
+  trap ERR emergency_exit
+  trap SIGTERM	emergency_exit
   do_wizard
   clean_work
 else
