@@ -11,6 +11,7 @@ BACKTITLE="BFU installer v$VERSION"
 DIALOG_TIMEOUT=3
 # here you can say where are temporary files placed
 TMP_DIR="${TMP_DIR:-/tmp}"
+TMP_DIR="${TMP_DIR##*/}"
 UNSQUASH_BIN="$TMP_DIR/unsquashfs"
 
 KED_T3_RELEASE="k106"
@@ -56,7 +57,7 @@ LD sw-mis-LD Sleep_Walker's kernel with miska's rootfs for LifeDrive (not ready 
 GEN ked-pxa kEdAR's generic PXA27x release $KED_27x_RELEASE
 GEN sw-mis-PXA27x Sleep_Walker's kernel with miska's rootfs for generic device (not ready yet)"
 
-NEEDS_PARTITION="mx-TT, ked-sw-T680, sw-mis-T680, sw-mis-TX, sw-mis-LD, sw-mis-PXA27x, rast-T650, deb-t650"
+NEEDS_PARTITION="mx-TT, ked-sw-T680, sw-mis-T680, sw-mis-TX, sw-mis-LD, sw-mis-PXA27x, rast-T650, deb-T650"
 NOT_COCOBOOT="mx-TT, mx-Z71"
 
 # if it is not special case, I want cocoboot!
