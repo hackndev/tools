@@ -1,21 +1,23 @@
-# keymaps for Palm Treo 680, By Emfox Zhou.
-#Version 0.2.1 (20090402).
+# Keymaps for Palm Treo 680, By Emfox Zhou.
+# Version 0.3 (20090410).
 # Release to public domain.
 
 #keycode 59 = F1
-#Alt keycode 59 = Console_1
+AltGr keycode 59 = Escape
+Alt keycode 59 = Console_1
 #keycode 68 = F2
-#Alt keycode 68 = Console_2
+Alt keycode 68 = Console_2
 #keycode 88 = F3
-#Alt keycode 88 = Console_3
+Alt keycode 88 = Console_3
 #keycode 67 = F4
-#Alt keycode 67 = Console_4
+Alt keycode 67 = Console_4
 
 keycode 29 = AltGr
 keycode 97 = Control
 keycode 100 = Alt
 
 AltGr keycode 11 = zero
+Shift keycode 11 = percent
 AltGr keycode 16 = slash
 Alt keycode 16 = backslash
 AltGr keycode 17 = plus
@@ -32,7 +34,6 @@ AltGr keycode 23 = at
 AltGr keycode 24 = quotedbl
 Alt keycode 24 = asciitilde
 AltGr keycode 30 = ampersand
-Alt keycode 30 = asciicircum
 AltGr keycode 31 = minus
 Alt keycode 31 = underscore
 AltGr keycode 32 = four
@@ -41,6 +42,7 @@ Alt keycode 33 = braceleft
 AltGr keycode 34 = six
 Alt keycode 34 = braceright
 AltGr keycode 35 = dollar
+Alt keycode 35 = asciicircum
 AltGr keycode 36 = exclam
 Alt keycode 36 = bar
 AltGr keycode 37 = colon
