@@ -1,0 +1,32 @@
+! Xmodmap for Palm Treo 680, By Emfox Zhou.
+! Version 0.3 (20090410).
+! Release to public domain.
+
+keysym Control_L = Mode_switch
+keycode 19 = 0 percent
+keycode 24 = q Q slash backslash
+keycode 25 = w W plus
+keycode 26 = e E 1
+keycode 27 = r R 2 bracketleft
+keycode 28 = t T 3 bracketright
+keycode 29 = y Y parenleft less
+keycode 30 = u U parenright greater
+keycode 31 = i I at
+keycode 32 = o O quotedbl asciitilde
+keycode 38 = a A ampersand
+keycode 39 = s S minus underscore
+keycode 40 = d D 4
+keycode 41 = f F 5 braceleft
+keycode 42 = g G 6 braceright
+keycode 43 = h H dollar asciicircum
+keycode 44 = j J exclam bar
+keycode 45 = k K colon semicolon
+keycode 46 = l L apostrophe grave
+keycode 52 = z Z asterisk
+keycode 53 = x X 7
+keycode 54 = c C 8
+keycode 55 = v V 9
+keycode 56 = b B numbersign equal
+keycode 57 = n N question
+keycode 58 = m M comma
+keycode 67 = XF86Phone XF86Phone Escape
