@@ -11,10 +11,11 @@ BACKTITLE="BFU installer v$VERSION"
 DIALOG_TIMEOUT=3
 # here you can say where are temporary files placed
 TMP_DIR="${TMP_DIR:-/tmp}"
-TMP_DIR="${TMP_DIR##*/}"
+TMP_DIR="${TMP_DIR%/}"
 UNSQUASH_BIN="$TMP_DIR/unsquashfs"
 
 KED_T3_RELEASE="k106"
+KED_T3_TEST_RELEASE="k107"
 KED_27x_RELEASE="k27x.07"
 RASTER_RELEASE="2008-11-13"
 
@@ -41,6 +42,7 @@ GEN Generic"
 #	rest of line is description
 RELEASE_LIST="TT mx-TT Marex's release for Tungsten|T (outdated and MMC only)
 T3 ked-T3 kEdAR's release $KED_T3_RELEASE for Tungsten|T3
+T3 ked-T3-test kEdAR's release $KED_T3_TEST_RELEASE for Tungsten|T3
 T3 ked-sw-T3 Sleep_Walker's kernel with kEdAR's release for Tungsten|T3
 T3 sw-mis-T3 Sleep_Walker's kernel with miska's rootfs for T3
 T5 m-s-T5 miska & snua12's release for Tungsten|T5
@@ -923,18 +925,54 @@ ked_pxa_release() {
 }
 
 # kEdAR's release for T3
-ked_T3_release() {
-  $download "http://kedar.palmlinux.cz/initrd.$KED_T3_RELEASE.gz" "$FAT_MOUNT/"
-  $download "http://kedar.palmlinux.cz/zImage.$KED_T3_RELEASE.gz" "$FAT_MOUNT/"
-  $download "http://kedar.palmlinux.cz/cocoboot.conf" "$FAT_MOUNT/"
-  $download "http://kedar.palmlinux.cz/linux2ram/modlist-OpieMini0719.txt" "$FAT_MOUNT/linux2ram/"
-  $download "http://kedar.palmlinux.cz/linux2ram/modules-$KED_T3_RELEASE.squashfs" "$FAT_MOUNT/linux2ram/"
-  $download "http://kedar.palmlinux.cz/linux2ram/rootfs-OpieMini20070719-xscale.squashfs" "$FAT_MOUNT/linux2ram/"
-  $download "http://kedar.palmlinux.cz/linux2ram/konqueror-embedded.squashfs" "$FAT_MOUNT/linux2ram/"
-  $download "http://kedar.palmlinux.cz/linux2ram/morefonts_opie.squashfs" "$FAT_MOUNT/linux2ram/"
-  $download "http://kedar.palmlinux.cz/linux2ram/dev_tt3.squashfs" "$FAT_MOUNT/linux2ram/"
-  $download "http://kedar.palmlinux.cz/linux2ram/kedar_changes.squashfs" "$FAT_MOUNT/linux2ram/"
+ked_T3_test_release() {
+  lazy_download_release_to_tmp "http://kedar.palmlinux.cz/test/initrd-$KED_T3_TEST_RELEASE.gz"
+  cp "$TMP_DIR/$RELEASE/initrd-$KED_T3_TEST_RELEASE.gz" "$FAT_MOUNT/"
+  lazy_download_release_to_tmp "http://kedar.palmlinux.cz/test/zImage-$KED_T3_TEST_RELEASE"
+  cp "$TMP_DIR/$RELEASE/zImage-$KED_T3_TEST_RELEASE" "$FAT_MOUNT/"
+  lazy_download_release_to_tmp "http://kedar.palmlinux.cz/cocoboot.conf"
+  cp "$TMP_DIR/$RELEASE/cocoboot.conf" "$FAT_MOUNT/"
+  sed -i "/^kernel = /s/^.*$/kernel = zImage-$KED_T3_TEST_RELEASE/;/^initrd = /s/^.*$/initrd = initrd-$KED_T3_TEST_RELEASE.gz/" "$FAT_MOUNT/cocoboot.conf"
+  lazy_download_release_to_tmp "http://kedar.palmlinux.cz/linux2ram/modlist-OpieMini0719.txt" 
+  cp "$TMP_DIR/$RELEASE/modlist-OpieMini0719.txt" "$FAT_MOUNT/linux2ram/"
+  lazy_download_release_to_tmp "http://kedar.palmlinux.cz/linux2ram/modules-$KED_T3_TEST_RELEASE.squashfs"
+  cp "$TMP_DIR/$RELEASE/modules-$KED_T3_TEST_RELEASE.squashfs" "$FAT_MOUNT/linux2ram/"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/rootfs-OpieMini20070719-xscale.squashfs"
+  cp "$TMP_DIR/rootfs-OpieMini20070719-xscale.squashfs" "$FAT_MOUNT/linux2ram/"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/konqueror-embedded.squashfs"
+  cp "$TMP_DIR/konqueror-embedded.squashfs" "$FAT_MOUNT/linux2ram/"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/morefonts_opie.squashfs"
+  cp "$TMP_DIR/morefonts_opie.squashfs" "$FAT_MOUNT/linux2ram/"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/dev_tt3.squashfs"
+  cp "$TMP_DIR/dev_tt3.squashfs" "$FAT_MOUNT/linux2ram/"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/kedar_changes.squashfs"
+  cp "$TMP_DIR/kedar_changes.squashfs" "$FAT_MOUNT/linux2ram/"
 }
+
+ked_T3_release() {
+  lazy_download_release_to_tmp "http://kedar.palmlinux.cz/initrd.$KED_T3_RELEASE.gz"
+  cp "$TMP_DIR/$RELEASE/initrd.$KED_T3_RELEASE.gz" "$FAT_MOUNT/"
+  lazy_download_release_to_tmp "http://kedar.palmlinux.cz/zImage.$KED_T3_RELEASE"
+  cp "$TMP_DIR/$RELEASE/zImage.$KED_T3_RELEASE" "$FAT_MOUNT/"
+  $download "http://kedar.palmlinux.cz/cocoboot.conf" "$FAT_MOUNT/"
+  sed -i "/^kernel = /s/^.*$/kernel = zImage.$KED_T3_RELEASE/;/^initrd = /s/^.*$/initrd = initrd.$KED_T3_RELEASE.gz/" "$FAT_MOUNT/cocoboot.conf"
+  lazy_download_release_to_tmp "http://kedar.palmlinux.cz/linux2ram/modlist-OpieMini0719.txt" 
+  cp "$TMP_DIR/$RELEASE/modlist-OpieMini0719.txt" "$FAT_MOUNT/linux2ram/"
+  lazy_download_release_to_tmp "http://kedar.palmlinux.cz/linux2ram/modules-$KED_T3_RELEASE.squashfs"
+  cp "$TMP_DIR/$RELEASE/modules-$KED_T3_RELEASE.squashfs" "$FAT_MOUNT/linux2ram/"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/rootfs-OpieMini20070719-xscale.squashfs"
+  cp "$TMP_DIR/rootfs-OpieMini20070719-xscale.squashfs" "$FAT_MOUNT/linux2ram/"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/konqueror-embedded.squashfs"
+  cp "$TMP_DIR/konqueror-embedded.squashfs" "$FAT_MOUNT/linux2ram/"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/morefonts_opie.squashfs"
+  cp "$TMP_DIR/morefonts_opie.squashfs" "$FAT_MOUNT/linux2ram/"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/dev_tt3.squashfs"
+  cp "$TMP_DIR/dev_tt3.squashfs" "$FAT_MOUNT/linux2ram/"
+  lazy_download_to_tmp "http://kedar.palmlinux.cz/linux2ram/kedar_changes.squashfs"
+  cp "$TMP_DIR/kedar_changes.squashfs" "$FAT_MOUNT/linux2ram/"
+
+}
+
 
 # Sleep_Walker's kernel and miska's rootfs for Treo680
 sw_mis_T680_release() {
@@ -1029,17 +1067,21 @@ lazy_download_release_to_tmp() {
   $download "$1" "$TMP_DIR/$RELEASE/$BASENAME"
 }
 
+lazy_download_release_to_tmp_and_cp() {
+  lazy_download_release_to_tmp "$1"
+  cp "$TMP_DIR/$RELEASE/${1##*/}" "$2"
+}
 
 do_release_preparations() {
   if is_true `$get_bool "Do you know where are mount points for FAT (and if needed also EXT) partitions?\nYou can have it set in /etc/fstab or you can have it handled by HAL."`; then
     ask_for_fat_mount
     if grep "$RELEASE" <<< "$NEEDS_PARTITION" > /dev/null; then
       ask_for_ext_mount
+      lazy_mount "$EXT2_MOUNT" || $fatal_error "Mounting EXT2 failed.\n\nExiting..."
+      EXT2_MOUNTED=yes
     fi
-    mount "$FAT_MOUNT" || $fatal_error "Mounting FAT failed.\n\nExiting..."
+    lazy_mount "$FAT_MOUNT" || $fatal_error "Mounting FAT failed.\n\nExiting..."
     FAT_MOUNTED=yes
-    mount "$EXT2_MOUNT" || $fatal_error "Mounting EXT2 failed.\n\nExiting..."
-    EXT2_MOUNTED=yes
   else
   #probably in /media
     if [ -z "$CARD_DEVICE" ]; then
