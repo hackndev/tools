@@ -1,0 +1,50 @@
+// $XKeyboardConfig$
+
+//
+
+default
+partial alphanumeric_keys modifier_keys 
+xkb_symbols "treo" {
+
+    include "us(basic)"
+    name[Group1]= "680";
+
+    key <LCTL> {
+	type[Group1]="ONE_LEVEL",
+ 	symbols[Group1] = [ ISO_Level3_Shift ]
+ 		};
+    modifier_map Mod5   { ISO_Level3_Shift };
+
+    // Alphanumeric section
+    key <AE10> {	[	  0,	percent	]	};
+
+    key <AD01> {	[	  q,	Q,	slash,	backslash	]	};
+    key <AD02> {	[	  w,	W,	plus		]	};
+    key <AD03> {	[	  e,	E,	1		]	};
+    key <AD04> {	[	  r,	R,	2,	bracketleft	]	};
+    key <AD05> {	[	  t,	T,	3,	bracketright	]	};
+    key <AD06> {	[	  y,	Y,	parenleft, less	]	};
+    key <AD07> {	[	  u,	U,	parenright, greater	]	};
+    key <AD08> {	[	  i,	I,	at	]	};
+    key <AD09> {	[	  o,	O,	quotedbl, asciitilde	]	};
+
+    key <AC01> {	[	  a,	A,	ampersand	]	};
+    key <AC02> {	[	  s,	S,	minus,	underscore	]	};
+    key <AC03> {	[	  d,	D,	4	]	};
+    key <AC04> {	[	  f,	F,	5,	braceleft	]	};
+    key <AC05> {	[	  g,	G,	6,	braceright	]	};
+    key <AC06> {	[	  h,	H,	dollar,	asciicircum	]	};
+    key <AC07> {	[	  j,	J,	exclam,	bar	]	};
+    key <AC08> {	[	  k,	K,	colon,	semicolon	]	};
+    key <AC09> {	[	  l,	L,	apostrophe, grave	]	};
+
+    key <AB01> {	[	  z,	Z,	asterisk	]	};
+    key <AB02> {	[	  x,	X,	7	]	};
+    key <AB03> {	[	  c,	C,	8	]	};
+    key <AB04> {	[	  v,	V,	9	]	};
+    key <AB05> {	[	  b,	B,	numbersign, equal	]	};
+    key <AB06> {	[	  n,	N,	question	]	};
+    key <AB07> {	[	  m,	M,	comma	]	};
+    // End alphanumeric section
+};
+
