@@ -989,6 +989,21 @@ sw_mis_T680_release() {
   ask_and_add_temp_file "$TMP_DIR/${IMAGE##*/}"
 }
 
+sw_mis_TX_release() {
+  LAST_BUILD="`wget http://sleepwalker.hackndev.com/release/TX/linux-2.6-arm/partition/build -o /dev/null -O -`"
+  $download "http://sleepwalker.hackndev.com/release/TX/linux-2.6-arm/partition/$LAST_BUILD/zImage.$DEVICE.sw$LAST_BUILD" "$FAT_MOUNT"
+  $download "http://sleepwalker.hackndev.com/release/TX/linux-2.6-arm/partition/$LAST_BUILD/cocoboot.conf" "$FAT_MOUNT"
+  auryn_images || return
+  lazy_download_to_tmp "$IMAGE"
+  handle_rootfs_image "$TMP_DIR/${IMAGE##*/}"
+  lazy_download_release_to_tmp "http://sleepwalker.hackndev.com/release/$DEVICE/linux-2.6-arm/partition/$LAST_BUILD/modules.$DEVICE.sw$LAST_BUILD.tar.bz2"
+  handle_rootfs_image "$TMP_DIR/$RELEASE/modules.$DEVICE.sw$LAST_BUILD.tar.bz2"
+  fix_root_passwd
+  ask_and_add_temp_file "$TMP_DIR/$RELEASE/modules.$DEVICE.sw$LAST_BUILD.tar.bz2"
+  ask_and_add_temp_file "$TMP_DIR/${IMAGE##*/}"
+}
+
+
 # Sleep_Walker's kernel and kEdAR's rootfs with his changes
 ked_sw_T680_release() {
   $download "http://sleepwalker.hackndev.com/release/T680/linux-2.6-arm/partition/$LAST_BUILD/zImage.T680.sw$LAST_BUILD" "$FAT_MOUNT"
