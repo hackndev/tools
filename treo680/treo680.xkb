@@ -14,6 +14,8 @@ xkb_symbols "treo" {
  	symbols[Group1] = [ ISO_Level3_Shift ]
  		};
     modifier_map Mod5   { ISO_Level3_Shift };
+    // Add windows context menu button
+    key <TAB>  {	[	Tab,	ISO_Left_Tab,	Menu	]	};
 
     // Alphanumeric section
     key <AE10> {	[	  0,	percent	]	};
